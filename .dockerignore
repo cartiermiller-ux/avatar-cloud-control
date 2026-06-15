@@ -1,0 +1,75 @@
+# ============================================================
+# Docker 构建排除文件
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# 虚拟环境
+venv/
+.venv/
+env/
+.env
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Docker 文件
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# 文档
+*.md
+!requirements.txt
+
+# 测试
+*.test
+tests/
+.coverage
+htmlcov/
+
+# 临时文件
+*.log
+*.tmp
+*.cache
+*.bak
+
+# 数据库 (使用命名卷持久化)
+*.db
+*.sqlite
+*.sqlite3
+
+# 本地开发文件
+. DS_Store
+Thumbs.db
+desktop.ini
+
+# 浏览器自动化
+*.crdownload
+playwright-report/
+test-results/
+
+# 备份
+*.bundle
+*.patch
+*backup*
+*_backup*

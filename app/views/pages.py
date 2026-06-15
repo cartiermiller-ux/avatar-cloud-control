@@ -10,6 +10,12 @@ log = logging.getLogger(__name__)
 pages_bp = Blueprint("pages", __name__)
 
 
+@pages_bp.route("/health")
+def health():
+    """健康检查端点 (用于 Docker 健康检查)"""
+    return {"status": "ok"}, 200
+
+
 @pages_bp.route("/")
 @requires_auth
 def index():

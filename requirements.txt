@@ -8,3 +8,7 @@ requests==2.31.0
 bcrypt==4.1.1
 gunicorn==21.2.0
 PyJWT==2.8.0
+# 可选: 浏览器自动化 (用于注册功能)
+playwright>=1.40.0
+# 可选: MySQL 连接 (生产环境)
+pymysql>=1.1.0

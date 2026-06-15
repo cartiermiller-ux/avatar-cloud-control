@@ -1,0 +1,59 @@
+# ============================================================
+# 阿凡达云控 (Avatar Cloud Control) - Docker Compose 配置
+# ============================================================
+# 用法:
+#   开发环境: docker-compose up -d
+#   生产环境: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# ============================================================
+
+version: '3.8'
+
+services:
+  # -------------------- 主应用 --------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avatar-cloud-control
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8899}:8899"
+    environment:
+      - FLASK_DEBUG=false
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - SQLITE_PATH=data/textnow_factory.db
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=8899
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TN_PROXY=${TN_PROXY:-}
+      - MATRIX_THREADS=${MATRIX_THREADS:-4}
+      - MATRIX_BATCH_SIZE=${MATRIX_BATCH_SIZE:-50}
+    volumes:
+      # 持久化数据库
+      - ./data:/app/data
+      # 持久化上传文件
+      - ./app/static/uploads:/app/app/static/uploads
+      # 持久化日志
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8899/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # -------------------- 可选: SOCKS5 代理 --------------------
+  # 如果需要通过代理访问 TextNow
+  # socks5-proxy:
+  #   image: serjs/go-socks5-proxy:latest
+  #   container_name: avatar-socks5-proxy
+  #   environment:
+  #     - AUTH METHODS=none
+  #   ports:
+  #     - "1080:1080"
+  #   restart: unless-stopped
+
+networks:
+  default:
+    name: avatar-cloud-network
