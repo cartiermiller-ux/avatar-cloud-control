@@ -1,4 +1,4 @@
-﻿"""
+"""
 TextNow iOS 账号注册脚本 (最终优化版)
 优化点：
 1. 完整的配置/数据库模块化
@@ -12,6 +12,7 @@ TextNow iOS 账号注册脚本 (最终优化版)
 9. 避免连接泄漏
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -37,7 +38,7 @@ from app.config import (
     RETRY_BACKOFF_BASE, TEXTNOW_API_URL, TEXTNOW_APP_VERSION,
     DEVICE_POOL, FIRST_NAMES, LAST_NAMES
 )
-from app.models.db import init_accounts_schema, get_db, check_account_exists
+from app.models.db import get_db, init_schema
 
 # ===================== 日志配置 =====================
 def setup_logging():
@@ -80,14 +81,11 @@ def generate_client_id() -> str:
 def generate_random_email() -> str:
     """生成更真实的随机邮箱"""
     # 确保邮箱唯一性
-    while True:
-        first = random.choice(FIRST_NAMES).lower()
-        last = random.choice(LAST_NAMES).lower()
-        num = random.randint(1000, 99999)
-        suffix = random.choice(["outlook.com", "gmail.com", "yahoo.com", "icloud.com"])
-        email = f"{first}{last}{num}@{suffix}"
-        if not check_account_exists(email):
-            return email
+    first = random.choice(FIRST_NAMES).lower()
+    last = random.choice(LAST_NAMES).lower()
+    num = random.randint(1000, 99999)
+    suffix = random.choice(["outlook.com", "gmail.com", "yahoo.com", "icloud.com"])
+    return f"{first}{last}{num}@{suffix}"
 
 def generate_device_info() -> Dict[str, str]:
     """生成真实的iOS设备信息"""
@@ -106,8 +104,8 @@ def generate_device_info() -> Dict[str, str]:
 
 def generate_px_auth(dev_info: Dict[str, str], ts: str) -> str:
     """生成X-PX-Auth头 (逆向自TextNow iOS客户端)"""
-    # 注意：此处secret仅为示例，需根据实际逆向结果替换
-    secret = b"textnow_px_secret_2024"
+    # 注意：此处secret必须通过环境变量配置，硬编码仅为开发参考
+    secret = os.getenv("PX_AUTH_SECRET", "textnow_px_secret_2024").encode("utf-8")
     raw = f'{dev_info["idfa"]}{dev_info["px_uuid"]}{ts}'.encode("utf-8")
     sig = base64.b64encode(hmac.new(secret, raw, hashlib.sha256).digest()).decode("utf-8")
     r64 = ''.join(random.choice(string.hexdigits.lower()) for _ in range(64))
@@ -178,14 +176,15 @@ def register_one_account(proxy_info: Optional[Dict[str, str]] = None) -> Optiona
             }
             
             # 发送请求
-            log.debug(f"注册请求 - 尝试{attempt} | 邮箱: {email} | 设备: {dev_info['device_model']}")
+            log.debug(f"注册请求 - 尝试{attempt} | 邮箱: {email[:3]}***@{email.split('@')[-1]} | 设备: {dev_info['device_model']}")
+            SSL_VERIFY = os.getenv("SSL_VERIFY", "true").lower() == "true"
             response = session.post(
                 TEXTNOW_API_URL,
                 headers=headers,
                 json=payload,
                 proxies=proxies,
                 timeout=30,
-                verify=False  # 忽略SSL验证 (根据实际情况调整)
+                verify=SSL_VERIFY
             )
             
             # 处理响应
@@ -208,7 +207,7 @@ def register_one_account(proxy_info: Optional[Dict[str, str]] = None) -> Optiona
                     "phone": resp_json.get("phone_number", ""),
                     "username": resp_json.get("username", "")
                 }
-                log.info(f"✅ 注册成功 | 邮箱: {email} | 手机号: {account_info['phone']} | 用户名: @{account_info['username']}")
+                log.info(f"注册成功 | 手机号: {account_info['phone'][-4:]}**** | 用户名: @{account_info['username']}")
                 return account_info
             
             # 非200状态码处理

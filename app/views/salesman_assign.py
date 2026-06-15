@@ -184,7 +184,8 @@ def api_assign_logs():
             LEFT JOIN tn_salesman os ON l.old_salesman_id = os.id
             LEFT JOIN tn_salesman ns ON l.new_salesman_id = ns.id
             LEFT JOIN tn_agents op ON l.operator_id = op.id
-            ORDER BY l.id DESC LIMIT {limit} OFFSET {offset}"""
+            ORDER BY l.id DESC LIMIT ? OFFSET ?""",
+            (limit, offset)
         )
         rows = cur.fetchall()
         conn.close()

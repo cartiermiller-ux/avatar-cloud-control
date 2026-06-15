@@ -52,8 +52,8 @@ def create_app():
     """Flask 应用工厂函数"""
     flask_app = Flask(
         __name__,
-        template_folder='templates',
-        static_folder='static',
+        template_folder=str(Path(__file__).parent.parent / 'templates'),
+        static_folder=str(Path(__file__).parent.parent / 'static'),
     )
     flask_app.secret_key = SECRET_KEY
 

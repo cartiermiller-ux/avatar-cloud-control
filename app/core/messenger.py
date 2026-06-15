@@ -205,7 +205,7 @@ def get_account_dict_from_db(account_id):
     从数据库获取账号完整信息 dict，供发送函数使用。
     """
     try:
-        from models.db import get_db_dict
+        from app.models.db import get_db_dict
         conn = get_db_dict()
         cur = conn.cursor()
         cur.execute("SELECT * FROM tn_accounts WHERE id=?", (account_id,))
@@ -227,8 +227,8 @@ def run_matrix_task(task_id):
     逐个遍历 broadcast_item，根据任务类型调用对应发送函数。
     """
     try:
-        from models.db import get_db, get_db_dict
-        from core.proxy import get_account_proxy
+        from app.models.db import get_db, get_db_dict
+        from app.core.proxy import get_account_proxy
 
         conn_d = get_db_dict()
         cur = conn_d.cursor()

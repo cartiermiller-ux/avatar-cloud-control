@@ -24,8 +24,8 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 # ==================== Web 服务配置 ====================
 WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.getenv("WEB_PORT", "8899"))
-SECRET_KEY = os.getenv("SECRET_KEY", "textnow-factory-secret-key-2024")
-FLASK_DEBUG = os.getenv("FLASK_DEBUG", "true").lower() == "true"
+SECRET_KEY = os.getenv("SECRET_KEY") or os.urandom(32).hex()
+FLASK_DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
 # ==================== 数据库配置 ====================
 DB_TYPE = os.getenv("DB_TYPE", "sqlite")  # mysql 或 sqlite
@@ -35,7 +35,7 @@ SQLITE_PATH = os.getenv("SQLITE_PATH", "data/textnow_factory.db")
 DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_USER = os.getenv("DB_USER", "root")
-DB_PASS = os.getenv("DB_PASS", "123456")
+DB_PASS = os.getenv("DB_PASS", "")
 DB_NAME = os.getenv("DB_NAME", "textnow_us")
 
 DB_CONFIG = {

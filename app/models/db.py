@@ -106,7 +106,7 @@ def init_schema_sqlite():
     """初始化 SQLite 表结构（完整版，12张表）"""
     import sqlite3, hashlib, os
     
-    required_tables = ['tn_accounts','tn_agents','tn_account_assignment','tn_conversations','tn_messages',
+    required_tables = ['tn_accounts','tn_agents','tn_account_assignment','tn_account_assign_log','tn_conversations','tn_messages',
                        'tn_templates','tn_auto_rules','tn_broadcast_task','tn_broadcast_item','tn_settings',
                        'tn_register_task','tn_salesman','tn_ip_pool','tn_account_ip']
     
@@ -133,7 +133,8 @@ def init_schema_sqlite():
             password TEXT, sid TEXT, token TEXT, phone_number TEXT, email TEXT,
             idfa TEXT, user_agent TEXT, px_auth TEXT, device_fp TEXT,
             os_version TEXT, client_id TEXT, proxy TEXT, status INTEGER DEFAULT 1,
-            health_score INTEGER DEFAULT 100, last_used_at TIMESTAMP,
+            health_score INTEGER DEFAULT 100, salesman_id INTEGER,
+            last_used_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
         
@@ -148,12 +149,25 @@ def init_schema_sqlite():
             agent_id INTEGER NOT NULL, assigned_by INTEGER,
             assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(account_id, agent_id))""")
+
+        cur.execute("""CREATE TABLE IF NOT EXISTS tn_account_assign_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id INTEGER NOT NULL,
+            old_salesman_id INTEGER,
+            new_salesman_id INTEGER,
+            operate_type TEXT DEFAULT '',
+            operator_id INTEGER,
+            operate_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
         
         cur.execute("""CREATE TABLE IF NOT EXISTS tn_conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL,
             contact_number TEXT NOT NULL, status INTEGER DEFAULT 1,
+            last_message TEXT DEFAULT '',
+            unread INTEGER DEFAULT 0,
+            salesman_id INTEGER,
             last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(account_id, contact_number))""")
         
         cur.execute("""CREATE TABLE IF NOT EXISTS tn_messages (
@@ -216,7 +230,12 @@ def init_schema_sqlite():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
 
         # Default data
-        admin_hash = hashlib.sha256('admin123'.encode()).hexdigest()
+        # Default data - 使用 bcrypt 哈希密码（回退 SHA-256）
+        try:
+            import bcrypt
+            admin_hash = bcrypt.hashpw(b'admin123', bcrypt.gensalt(12)).decode('utf-8')
+        except ImportError:
+            admin_hash = hashlib.sha256('admin123'.encode()).hexdigest()
         cur.execute("INSERT OR IGNORE INTO tn_agents (username,password_hash,nickname,role,is_active) VALUES (?,?,?,?,?)",
                    ('admin', admin_hash, 'Admin', 'admin', 1))
         cur.execute("INSERT OR IGNORE INTO tn_templates (name,shortcut,content,category,is_active) VALUES (?,?,?,?,?)",
@@ -242,24 +261,20 @@ def init_default_data():
     cur = conn.cursor()
     
     try:
-        import hashlib
-        
         cur.execute("SELECT id FROM tn_agents WHERE username='admin'")
         if not cur.fetchone():
-            pwd_hash = hashlib.sha256("admin123".encode('utf-8')).hexdigest()
-            
-            if DB_TYPE == "sqlite":
-                cur.execute(
-                    """INSERT INTO tn_agents (username, password_hash, nickname, role, is_active) 
-                       VALUES (?, ?, ?, ?, ?)""",
-                    ('admin', pwd_hash, 'Admin', 'admin', 1)
-                )
-            else:
-                cur.execute(
-                    """INSERT INTO tn_agents (username, password_hash, nickname, role, is_active) 
-                       VALUES (?, ?, ?, ?, ?)""",
-                    ('admin', pwd_hash, 'Admin', 'admin', 1)
-                )
+            try:
+                import bcrypt
+                pwd_hash = bcrypt.hashpw(b'admin123', bcrypt.gensalt(12)).decode('utf-8')
+            except ImportError:
+                import hashlib
+                pwd_hash = hashlib.sha256(b'admin123').hexdigest()
+
+            cur.execute(
+                """INSERT INTO tn_agents (username, password_hash, nickname, role, is_active)
+                   VALUES (?, ?, ?, ?, ?)""",
+                ('admin', pwd_hash, 'Admin', 'admin', 1)
+            )
             
             conn.commit()
             log.info("Default admin created: admin/admin123")

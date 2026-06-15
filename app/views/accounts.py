@@ -191,11 +191,11 @@ def api_export_accounts():
         conn = get_db_dict()
         cur = conn.cursor()
 
-        query = """SELECT a.id, a.username, a.password, a.phone_number, a.email, a.status,
-                          a.health_score, a.sid, a.token, a.proxy, a.user_agent, a.device_fp,
+        query = """SELECT a.id, a.username, a.phone_number, a.email, a.status,
+                          a.health_score, a.proxy, a.user_agent, a.device_fp,
                           a.idfa, a.client_id, a.px_auth, a.last_used_at,
-                          p.ip as bind_ip, p.port as bind_port, p.proxy_user, p.proxy_pwd,
-                          p.area as ip_area, p.ip_type, p.id as ip_row_id
+                          p.ip as bind_ip, p.port as bind_port, p.area as ip_area, p.ip_type,
+                          p.id as ip_row_id
                    FROM tn_accounts a
                    LEFT JOIN tn_account_ip ai ON a.id = ai.account_id
                    LEFT JOIN tn_ip_pool p ON ai.ip_id = p.id"""
@@ -235,10 +235,7 @@ def api_export_accounts():
         def proxy_str(row):
             if not row.get("bind_ip"):
                 return ""
-            auth = ""
-            if row.get("proxy_user") and row.get("proxy_pwd"):
-                auth = f"{row['proxy_user']}:{row['proxy_pwd']}@"
-            return f"http://{auth}{row['bind_ip']}:{row.get('bind_port', '')}"
+            return f"http://{row['bind_ip']}:{row.get('bind_port', '')}"
 
         if fmt == "csv":
             si = io.StringIO()
