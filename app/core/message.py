@@ -2,8 +2,7 @@
 TextNow Factory - 消息收发核心模块
 功能：拉取消息、发送回复、标记已读、会话管理
 对齐表结构：tn_accounts / tn_conversations / tn_messages
-支持全字段协议鉴权，适配业务员分配体系
-兼容 SQLite(?占位符) 和 MySQL(%s占位符) 双模式
+统一使用 Web 端 API（www.textnow.com + connect.sid Cookie）
 """
 
 import time
@@ -17,10 +16,44 @@ log = logging.getLogger(__name__)
 # SQLite 用 ?，MySQL 用 %s
 PH = "?" if DB_TYPE == "sqlite" else "%s"
 
+# Web 端 API 基础地址
+TEXTNOW_WEB_BASE = "https://www.textnow.com"
+REQ_TIMEOUT = 30
+
+
+def _build_session(account):
+    """
+    构建 Web 端 API 的 requests.Session。
+    鉴权方式：connect.sid Cookie（Web 端标准方式，与 PyTextNow 一致）
+    account 应包含: sid, user_agent
+    """
+    sess = requests.Session()
+    sess.headers.update({
+        "User-Agent": account.get("user_agent") or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Origin": TEXTNOW_WEB_BASE,
+        "Referer": f"{TEXTNOW_WEB_BASE}/",
+    })
+
+    # Web 端鉴权：connect.sid Cookie
+    if account.get("sid"):
+        sess.cookies.set("connect.sid", account["sid"], domain=".textnow.com")
+
+    return sess
+
+
+def _get_proxies(account):
+    """获取代理配置"""
+    if account.get("proxy"):
+        return {"http": account["proxy"], "https": account["proxy"]}
+    return PROXY if PROXY else None
+
 
 def fetch_messages(account_id, limit=50):
     """
-    拉取账号的最新消息，自动同步到数据库
+    通过 Web 端 API 拉取账号的最新未读消息，自动同步到数据库。
+
     :param account_id: 账号 ID
     :param limit: 拉取数量
     :return: 新消息数量
@@ -29,10 +62,9 @@ def fetch_messages(account_id, limit=50):
     try:
         conn = get_db_dict()
         cur = conn.cursor()
-        # 修正字段名：对齐 tn_accounts 实际列名
+
         cur.execute(
-            f"""SELECT id, phone_number, username, sid, token, user_agent,
-                      px_auth, device_fp, proxy, salesman_id
+            f"""SELECT id, phone_number, username, sid, user_agent, proxy, salesman_id
                FROM tn_accounts WHERE id={PH} AND status=1""",
             (account_id,)
         )
@@ -42,38 +74,40 @@ def fetch_messages(account_id, limit=50):
             log.warning("账号不存在或已禁用：ID=%s", account_id)
             return 0
 
-        # ====================== 真实 TextNow 协议拉取消息 ======================
-        headers = {
-            "Authorization": f"Bearer {account['token']}",
-            "x-px-authorization": account["px_auth"],
-            "User-Agent": account["user_agent"],
-            "Cookie": f"sid={account['sid']}" if account.get("sid") else "",
-            "Accept": "application/json"
-        }
-        params = {"limit": limit, "direction": "incoming", "read": "false"}
-        proxies = {"http": account["proxy"], "https": account["proxy"]} if account.get("proxy") else PROXY
+        if not account.get("sid"):
+            log.warning("账号无 sid，无法拉取消息：ID=%s", account_id)
+            return 0
 
-        response = requests.get(
-            f"https://api.textnow.me/api/v2/users/{account['username']}/messages",
-            headers=headers,
+        # ====================== Web 端 API 拉取消息 ======================
+        sess = _build_session(account)
+        params = {"limit": limit, "direction": "incoming", "read": "false"}
+        proxies = _get_proxies(account)
+
+        response = sess.get(
+            f"{TEXTNOW_WEB_BASE}/api/messages",
             params=params,
             proxies=proxies,
-            timeout=30
+            timeout=REQ_TIMEOUT
         )
+
+        if response.status_code == 401:
+            log.warning("账号 sid 已过期（401），需要重新登录：ID=%s", account_id)
+            return 0
+
         response.raise_for_status()
         messages = response.json().get("messages", [])
         # ======================================================================
 
         new_count = 0
         for msg in messages:
-            contact_phone = msg.get("contact_value")
-            content = msg.get("content", "")
-            msg_time = msg.get("created_at")
+            contact_phone = msg.get("contact_value") or msg.get("contact_number")
+            content = msg.get("content", "") or msg.get("message", msg.get("text", ""))
+            msg_time = msg.get("created_at") or msg.get("date")
 
             if not contact_phone or not content:
                 continue
 
-            # 查找或创建会话（绑定业务员归属）—— 修正表名 tn_conversations
+            # 查找或创建会话（绑定业务员归属）
             cur.execute(
                 f"SELECT id, unread FROM tn_conversations WHERE account_id={PH} AND contact_number={PH}",
                 (account_id, contact_phone)
@@ -97,7 +131,7 @@ def fetch_messages(account_id, limit=50):
                     (content, conv_id)
                 )
 
-            # 插入消息记录—— 修正表名 tn_messages
+            # 插入消息记录
             cur.execute(
                 f"""INSERT INTO tn_messages (conversation_id, direction, content, sent_at)
                    VALUES ({PH}, 1, {PH}, {PH})""",
@@ -124,7 +158,8 @@ def fetch_messages(account_id, limit=50):
 
 def send_reply(conv_id, content, account_id=None):
     """
-    发送回复消息
+    通过 Web 端 API 发送回复消息。
+
     :param conv_id: 会话 ID
     :param content: 回复内容
     :param account_id: 账号 ID（可选，默认从会话中获取）
@@ -146,10 +181,8 @@ def send_reply(conv_id, content, account_id=None):
         if not account_id:
             account_id = conv["account_id"]
 
-        # 修正字段名对齐 tn_accounts
         cur.execute(
-            f"""SELECT id, phone_number, username, sid, token, user_agent,
-                      px_auth, device_fp, proxy
+            f"""SELECT id, username, sid, user_agent, proxy
                FROM tn_accounts WHERE id={PH} AND status=1""",
             (account_id,)
         )
@@ -157,32 +190,39 @@ def send_reply(conv_id, content, account_id=None):
         if not account:
             return False, "账号不存在或已禁用"
 
-        # ====================== 真实 TextNow 协议发送消息 ======================
-        headers = {
-            "Authorization": f"Bearer {account['token']}",
-            "x-px-authorization": account["px_auth"],
-            "User-Agent": account["user_agent"],
-            "Cookie": f"sid={account['sid']}" if account.get("sid") else "",
-            "Content-Type": "application/json"
-        }
-        payload = {"to": conv["contact_number"], "content": content, "type": "TEXT"}
-        proxies = {"http": account["proxy"], "https": account["proxy"]} if account.get("proxy") else PROXY
+        if not account.get("sid"):
+            return False, "账号无 sid，无法发送"
 
-        response = requests.post(
-            f"https://api.textnow.me/api/v2/users/{account['username']}/messages",
-            headers=headers,
+        # ====================== Web 端 API 发送消息 ======================
+        sess = _build_session(account)
+        payload = {
+            "contact_value": conv["contact_number"],
+            "message": content,
+            "content_type": "text",
+            "read": True
+        }
+        proxies = _get_proxies(account)
+
+        response = sess.post(
+            f"{TEXTNOW_WEB_BASE}/api/messages",
             json=payload,
             proxies=proxies,
-            timeout=30
+            timeout=REQ_TIMEOUT
         )
+
+        if response.status_code == 401:
+            return False, "账号 sid 已过期，需要重新登录"
+
         response.raise_for_status()
+        data = response.json()
         # ======================================================================
 
         # 记录发送的消息
+        msg_id = data.get("id", data.get("message_id", ""))
         cur.execute(
-            f"""INSERT INTO tn_messages (conversation_id, direction, content)
-               VALUES ({PH}, 2, {PH})""",
-            (conv_id, content)
+            f"""INSERT INTO tn_messages (conversation_id, direction, content, message_id)
+               VALUES ({PH}, 2, {PH}, {PH})""",
+            (conv_id, content, msg_id)
         )
 
         # 更新会话最后一条消息
