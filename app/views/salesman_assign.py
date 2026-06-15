@@ -124,30 +124,33 @@ def api_salesman_account_list():
         conn = get_db_dict()
         cur = conn.cursor()
 
-        if role == "admin":
-            base_sql = """SELECT a.*, p.ip as bind_ip, s.name as salesman_name
-                FROM tn_accounts a
-                LEFT JOIN tn_account_ip ai ON a.id = ai.account_id
-                LEFT JOIN tn_ip_pool p ON ai.ip_id = p.id
-                LEFT JOIN tn_salesman s ON a.salesman_id = s.id"""
-        else:
-            base_sql = f"""SELECT a.*, p.ip as bind_ip, s.name as salesman_name
-                FROM tn_accounts a
-                LEFT JOIN tn_account_ip ai ON a.id = ai.account_id
-                LEFT JOIN tn_ip_pool p ON ai.ip_id = p.id
-                LEFT JOIN tn_salesman s ON a.salesman_id = s.id
-                WHERE a.salesman_id = {salesman_id}"""
-
+        # 构建查询条件和参数（防注入）
+        where_clauses = []
+        params = []
+        if role != "admin":
+            where_clauses.append("a.salesman_id = ?")
+            params.append(salesman_id)
         if search:
+            where_clauses.append("(a.username LIKE ? OR a.phone_number LIKE ?)")
             like = f"%{search}%"
-            if "WHERE" in base_sql:
-                base_sql += f" AND (a.username LIKE '{like}' OR a.phone_number LIKE '{like}')"
-            else:
-                base_sql += f" WHERE a.username LIKE '{like}' OR a.phone_number LIKE '{like}'"
+            params.extend([like, like])
+        where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
 
-        cur.execute(f"SELECT COUNT(*) as c FROM ({base_sql}) as t")
+        count_sql = f"""SELECT COUNT(*) as c FROM tn_accounts a
+            LEFT JOIN tn_account_ip ai ON a.id = ai.account_id
+            LEFT JOIN tn_ip_pool p ON ai.ip_id = p.id
+            LEFT JOIN tn_salesman s ON a.salesman_id = s.id{where_sql}"""
+        cur.execute(count_sql, params)
         total = cur.fetchone()["c"]
-        cur.execute(base_sql + f" ORDER BY a.id DESC LIMIT {limit} OFFSET {offset}")
+
+        list_sql = f"""SELECT a.*, p.ip as bind_ip, s.name as salesman_name
+            FROM tn_accounts a
+            LEFT JOIN tn_account_ip ai ON a.id = ai.account_id
+            LEFT JOIN tn_ip_pool p ON ai.ip_id = p.id
+            LEFT JOIN tn_salesman s ON a.salesman_id = s.id
+            {where_sql}
+            ORDER BY a.id DESC LIMIT ? OFFSET ?"""
+        cur.execute(list_sql, params + [limit, offset])
         rows = cur.fetchall()
         conn.close()
         return jsonify({"code": 0, "msg": "", "count": total, "data": [dict(r) for r in rows]})

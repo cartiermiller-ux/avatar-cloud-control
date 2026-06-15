@@ -1,6 +1,6 @@
-# TextNow Factory
+# Avatar Cloud Control
 
-TextNow 账号管理平台 — 注册、分配、群发、会话一体化管理系统。
+TextNow 账号管理平台 — 注册、分发、群发、会话一体化管理系统。
 
 ## 项目结构
 
@@ -13,41 +13,41 @@ textnow_factory2/
 │   │   └── settings.py           # 所有配置项 (支持环境变量覆盖)
 │   ├── models/                   # 数据模型
 │   │   ├── __init__.py
-│   │   ├── db.py                 # 数据库连接 (SQLite/MySQL 双模式)
+│   │   ├── db.py                 # 数据库连接 (SQLite/MySQL 双支持)
 │   │   └── schema.sql            # MySQL 建表语句
 │   ├── views/                    # 路由 (Blueprint)
 │   │   ├── auth.py               # 登录/登出
-│   │   ├── pages.py              # 页面渲染
-│   │   ├── dashboard.py          # 控制台统计 API
-│   │   ├── accounts.py           # 账号管理 CRUD + 导入导出
-│   │   ├── register.py           # 注册任务 API
-│   │   ├── matrix.py             # 矩阵群发 API
-│   │   ├── agents.py             # 客服代理管理 API
-│   │   ├── salesmen.py           # 业务员管理 API
-│   │   ├── salesman_assign.py    # 业务员分配/回收/日志 API
-│   │   ├── conversations.py      # 会话管理 API
-│   │   ├── messages.py           # 消息收发 API
-│   │   ├── templates.py          # 消息模板 API
-│   │   ├── ip_manage.py          # IP 池管理 API
-│   │   └── upload.py             # 文件上传 API
+│   │   ├── pages.py             # 页面渲染
+│   │   ├── dashboard.py         # 控制台统计 API
+│   │   ├── accounts.py          # 账号管理 CRUD + 导入导出
+│   │   ├── register.py          # 注册任务 API
+│   │   ├── matrix.py            # 矩阵群发 API
+│   │   ├── agents.py            # 客服代理管理 API
+│   │   ├── salesmen.py          # 业务员管理 API
+│   │   ├── salesman_assign.py   # 业务员分配/回收/日志 API
+│   │   ├── conversations.py     # 会话管理 API
+│   │   ├── messages.py          # 消息收发 API
+│   │   ├── templates.py         # 消息模板 API
+│   │   ├── ip_manage.py         # IP 池管理 API
+│   │   └── upload.py            # 文件上传 API
 │   ├── core/                     # 核心业务模块
-│   │   ├── register.py           # 账号注册逻辑
-│   │   ├── message.py            # 消息收发逻辑
-│   │   ├── messenger.py          # 消息发送 (文本/图片/链接)
-│   │   ├── matrix.py             # 矩阵群发引擎
-│   │   └── proxy.py              # 代理 IP 工具
-│   ├── common/                   # 通用工具 (预留)
-│   ├── templates/                # HTML 模板 (Layui)
-│   ├── static/                   # 静态资源
-│   │   └── uploads/              # 上传文件目录
-│   └── scripts/                  # 运维脚本
-│       ├── init_db.py            # 数据库初始化
-│       ├── import_accounts.py    # 账号导入工具
-│       └── import_20_expired.py  # 过期账号导入
+│   │   ├── register.py          # 账号注册编辑
+│   │   ├── message.py           # 消息收发编辑
+│   │   ├── messenger.py         # 消息发送器 (文本/图片/链接)
+│   │   ├── matrix.py            # 矩阵群发引擎
+│   │   └── proxy.py             # 代理 IP 工具
+│   └── common/                   # 通用工具 (暂留)
+├── templates/                    # HTML 模板 (Layui)
+├── static/                       # 静态资源
+│   └── uploads/                  # 上传文件目录
+├── scripts/                      # 运维脚本
+│   ├── init_db.py               # 数据库初始化
+│   ├── import_accounts.py       # 账号导入工具
+│   └── import_20_expired.py     # 过期账号导入
 ├── data/                         # 数据目录
-│   └── textnow_factory.db        # SQLite 数据库
+│   └── textnow_factory.db       # SQLite 数据库
 ├── venv/                         # Python 虚拟环境
-├── run.py                        # 应用入口 ⭐
+├── run.py                        # 应用入口
 ├── requirements.txt              # Python 依赖
 ├── .gitignore
 └── README.md
@@ -92,9 +92,9 @@ python run.py
 | `SECRET_KEY` | 内置默认 | Flask 会话密钥 |
 | `FLASK_DEBUG` | `true` | 调试模式 |
 | `LOG_LEVEL` | `INFO` | 日志级别 |
-| `TN_PROXY` | 无 | 启用 SOCKS5 代理 |
+| `TN_PROXY` | 关闭 | 启用 SOCKS5 代理 |
 
-## API 端点一览
+## API 路由一览
 
 | 模块 | 路由 | 说明 |
 |------|------|------|
@@ -108,14 +108,15 @@ python run.py
 | 账号 | `GET /api/accounts/export` | 导出 |
 | 注册 | `GET /api/register/tasks` | 注册任务列表 |
 | 注册 | `POST /api/register/create` | 创建注册任务 |
+| 注册 | `POST /api/register/cancel` | 取消任务 |
 | 矩阵 | `GET /api/matrix/tasks` | 群发任务列表 |
 | 矩阵 | `POST /api/matrix/create` | 创建群发任务 |
 | 矩阵 | `POST /api/matrix/start` | 启动群发 |
 | 会话 | `GET /api/conversations` | 会话列表 |
 | 消息 | `GET /api/messages` | 消息列表 |
 | 消息 | `POST /api/messages/send` | 发送消息 |
-| IP池 | `GET /api/ip/list` | IP 列表 |
-| IP池 | `POST /api/ip/batch_import` | IP 批量导入 |
+| IP管理 | `GET /api/ip/list` | IP 列表 |
+| IP管理 | `POST /api/ip/batch_import` | IP 批量导入 |
 | 业务员 | `GET /api/salesmen` | 业务员列表 |
 | 客服 | `GET /api/agents` | 客服代理列表 |
 
@@ -123,4 +124,4 @@ python run.py
 
 - **后端**: Flask + SQLAlchemy (兼容 SQLite / MySQL)
 - **前端**: Layui CDN + 原生 JS
-- **数据库**: SQLite (开发) / MySQL (生产)
+- **数据库**: SQLite (开箱即用) / MySQL (生产环境)

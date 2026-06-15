@@ -245,20 +245,19 @@ def api_export_accounts():
             writer = csv.writer(si)
             writer.writerow(
                 [
-                    "ID", "用户名", "密码", "手机号", "邮箱", "状态", "健康度",
-                    "SID", "Token", "代理", "User-Agent", "设备指纹",
-                    "IDFA", "ClientID", "PX-Auth", "绑定IP", "IP地区", "IP类型", "代理连接串",
+                    "ID", "用户名", "手机号", "邮箱", "状态", "健康度",
+                    "User-Agent", "设备指纹",
+                    "IDFA", "ClientID", "绑定IP", "IP地区", "IP类型", "代理连接串",
                 ]
             )
             status_map = {1: "正常", 0: "禁用", 2: "异常"}
             for r in rows:
                 writer.writerow(
                     [
-                        r["id"], r["username"], r["password"], r.get("phone_number", ""),
+                        r["id"], r["username"], r.get("phone_number", ""),
                         r.get("email", ""), status_map.get(r.get("status"), ""), r.get("health_score", ""),
-                        r.get("sid", ""), r.get("token", ""), r.get("proxy", ""),
                         r.get("user_agent", ""), r.get("device_fp", ""), r.get("idfa", ""),
-                        r.get("client_id", ""), r.get("px_auth", ""),
+                        r.get("client_id", ""),
                         r.get("bind_ip", ""), r.get("ip_area", ""), r.get("ip_type", ""),
                         proxy_str(r),
                     ]
@@ -266,7 +265,7 @@ def api_export_accounts():
             output = si.getvalue()
             mimetype, ext = "text/csv", "csv"
         else:
-            lines = [f"{r['username']}----{r['password']}----{r.get('phone_number', '')}----{proxy_str(r)}" for r in rows]
+            lines = [f"{r['username']}----{r.get('phone_number', '')}----{proxy_str(r)}" for r in rows]
             output = "\n".join(lines)
             mimetype, ext = "text/plain", "txt"
 
