@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="layui-row layui-col-space15">
+    <div class="layui-col-md3">
+        <div class="layui-card">
+            <div class="layui-card-body" style="text-align:center;">
+                <div style="font-size:14px;color:#666;">活跃账号</div>
+                <div style="font-size:32px;font-weight:600;color:#009688;margin:10px 0;" id="stat-accounts">0</div>
+                <div style="font-size:14px;color:#666;">个</div>
+            </div>
+        </div>
+    </div>
+    <div class="layui-col-md3">
+        <div class="layui-card">
+            <div class="layui-card-body" style="text-align:center;">
+                <div style="font-size:14px;color:#666;">开放会话</div>
+                <div style="font-size:32px;font-weight:600;color:#009688;margin:10px 0;" id="stat-conversations">0</div>
+                <div style="font-size:14px;color:#666;">个</div>
+            </div>
+        </div>
+    </div>
+    <div class="layui-col-md3">
+        <div class="layui-card">
+            <div class="layui-card-body" style="text-align:center;">
+                <div style="font-size:14px;color:#666;">今日回复</div>
+                <div style="font-size:32px;font-weight:600;color:#009688;margin:10px 0;" id="stat-replies">0</div>
+                <div style="font-size:14px;color:#666;">条</div>
+            </div>
+        </div>
+    </div>
+    <div class="layui-col-md3">
+        <div class="layui-card">
+            <div class="layui-card-body" style="text-align:center;">
+                <div style="font-size:14px;color:#666;">系统状态</div>
+                <div style="font-size:32px;font-weight:600;color:#5FB878;margin:10px 0;">正常</div>
+                <div style="font-size:14px;color:#666;">运行中</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="layui-row layui-col-space15" style="margin-top:5px;">
+    <div class="layui-col-md6">
+        <div class="layui-card">
+            <div class="layui-card-header"><i class="layui-icon layui-icon-dialogue" style="margin-right:5px;"></i>最近消息</div>
+            <div class="layui-card-body">
+                <table class="layui-table" id="recent-messages" lay-size="sm">
+                    <thead><tr><th>时间</th><th>账号</th><th>内容</th></tr></thead>
+                    <tbody>
+                        <tr><td colspan="3" style="text-align:center;color:#999;">暂无数据</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="layui-col-md6">
+        <div class="layui-card">
+            <div class="layui-card-header"><i class="layui-icon layui-icon-rocket" style="margin-right:5px;"></i>快捷操作</div>
+            <div class="layui-card-body">
+                <div style="margin-bottom:10px;">
+                    <a href="/accounts" class="layui-btn layui-btn-primary">账号管理</a>
+                    <a href="/conversations" class="layui-btn layui-btn-warm">会话管理</a>
+                </div>
+                <div>
+                    <a href="/register" class="layui-btn">注册任务</a>
+                    <a href="/matrix" class="layui-btn layui-btn-danger">矩阵群发</a>
+                </div>
+            </div>
+        </div>
+        <div class="layui-card">
+            <div class="layui-card-header"><i class="layui-icon layui-icon-about" style="margin-right:5px;"></i>系统信息</div>
+            <div class="layui-card-body">
+                <table class="layui-table" lay-size="sm">
+                    <tbody>
+                        <tr><td width="120">系统名称</td><td>阿凡达云控</td></tr>
+                        <tr><td>版本</td><td>v2.0</td></tr>
+                        <tr><td>当前用户</td><td>{{ session.agent_nickname or session.agent_username }}</td></tr>
+                        <tr><td>角色</td><td>{{ session.agent_role }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+layui.use(['table'], function(){
+    function loadStats() {
+        $.get('/api/dashboard/stats', function(res) {
+            if (res.code === 0) {
+                var d = res.data;
+                $('#stat-accounts').text(d.total_accounts || 0);
+                $('#stat-conversations').text(d.open_conversations || 0);
+                $('#stat-replies').text(d.today_replies || 0);
+
+                // 渲染最近消息
+                var rows = d.recent_messages || [];
+                var html = '';
+                if (rows.length > 0) {
+                    rows.forEach(function(m) {
+                        var dir = m.direction == 1 ? '发' : '收';
+                        html += '<tr><td>' + m.time + '</td><td>' + dir + ' ' + m.account + '</td><td>' + m.content + '</td></tr>';
+                    });
+                } else {
+                    html = '<tr><td colspan="3" style="text-align:center;color:#999;">暂无数据</td></tr>';
+                }
+                $('#recent-messages tbody').html(html);
+            }
+        });
+    }
+    loadStats();
+    setInterval(loadStats, 30000);
+});
+</script>
+{% endblock %}

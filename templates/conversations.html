@@ -1,0 +1,825 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+/* 全局重置，和系统其他页面风格统一 */
+.layui-card-body {
+    padding: 0;
+}
+
+/* 三栏布局核心容器 */
+.chat-layout-container {
+    display: flex;
+    height: calc(100vh - 110px);
+    background-color: #fff;
+}
+
+/* ========== 左侧账号列表 ========== */
+.account-sidebar {
+    width: 220px;
+    border-right: 1px solid #e8e8e8;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+.sidebar-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e8e8e8;
+}
+.sidebar-header .layui-input {
+    height: 32px;
+    font-size: 13px;
+}
+.account-list {
+    flex: 1;
+    overflow-y: auto;
+}
+.account-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.account-item:hover {
+    background-color: #f5f7fa;
+}
+.account-item.active {
+    background-color: #eaf4ff;
+}
+.account-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: bold;
+    font-size: 14px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+.account-avatar.offline {
+    background: linear-gradient(135deg, #999 0%, #666 100%);
+}
+.account-info {
+    flex: 1;
+    overflow: hidden;
+}
+.account-number {
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.account-meta {
+    font-size: 11px;
+    color: #999;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.status-dot.online {
+    background-color: #00b42a;
+}
+.status-dot.offline {
+    background-color: #86909c;
+}
+.check-icon {
+    color: #00b42a;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* ========== 中间会话列表 ========== */
+.conversation-panel {
+    width: 300px;
+    border-right: 1px solid #e8e8e8;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+.panel-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e8e8e8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.panel-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+.panel-title span {
+    font-weight: normal;
+    color: #999;
+    font-size: 12px;
+    margin-left: 5px;
+}
+.panel-header .layui-btn {
+    padding: 0 8px;
+    height: 24px;
+    line-height: 24px;
+    font-size: 12px;
+}
+.conversation-list {
+    flex: 1;
+    overflow-y: auto;
+}
+.conversation-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.conversation-item:hover {
+    background-color: #f5f7fa;
+}
+.conversation-item.active {
+    background-color: #e6f7ff;
+}
+.conversation-item.unread {
+    background-color: #fff7e6;
+}
+.conv-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.conv-contact {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.conv-time {
+    font-size: 11px;
+    color: #999;
+}
+.conv-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.conv-preview {
+    font-size: 12px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    margin-right: 8px;
+}
+.conv-preview.unread {
+    color: #333;
+    font-weight: 500;
+}
+.unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background-color: #f53f3f;
+    color: #fff;
+    font-size: 11px;
+    padding: 0 5px;
+}
+.star-icon {
+    color: #faad14;
+    font-size: 14px;
+}
+.conversation-empty {
+    text-align: center;
+    color: #999;
+    padding-top: 60px;
+    font-size: 13px;
+}
+
+/* ========== 右侧聊天区 ========== */
+.chat-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #f5f7fa;
+    min-width: 0;
+}
+.chat-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid #e8e8e8;
+    background-color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.chat-contact-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: #333;
+}
+.chat-contact-number {
+    font-size: 12px;
+    color: #999;
+    margin-left: 10px;
+}
+.chat-actions {
+    display: flex;
+    gap: 8px;
+}
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+.chat-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+}
+.chat-placeholder i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: #dcdfe6;
+}
+.chat-bubble {
+    margin-bottom: 15px;
+    display: flex;
+}
+.chat-bubble-left {
+    justify-content: flex-start;
+}
+.chat-bubble-right {
+    justify-content: flex-end;
+}
+.chat-bubble-inner {
+    max-width: 70%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    word-break: break-word;
+}
+.chat-bubble-left .chat-bubble-inner {
+    background-color: #fff;
+    border: 1px solid #e8e8e8;
+}
+.chat-bubble-right .chat-bubble-inner {
+    background-color: #95ec69;
+}
+.chat-bubble-content {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+}
+.chat-bubble-time {
+    font-size: 11px;
+    color: #999;
+    margin-top: 4px;
+    text-align: right;
+}
+.chat-input-area {
+    padding: 15px;
+    background-color: #fff;
+    border-top: 1px solid #e8e8e8;
+}
+.chat-input-toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.chat-input-toolbar .layui-icon {
+    font-size: 18px;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+}
+.chat-input-toolbar .layui-icon:hover {
+    color: #1890ff;
+}
+.chat-input-box {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+.chat-input-box textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    min-height: 36px;
+}
+.chat-input-box textarea:focus {
+    outline: none;
+    border-color: #1890ff;
+}
+.chat-send-btn {
+    padding: 8px 24px;
+    height: 36px;
+    line-height: 36px;
+}
+
+/* 加载状态 */
+.loading-placeholder {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+.loading-placeholder .layui-icon {
+    font-size: 24px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 快捷回复模板面板 */
+.template-panel {
+    position: absolute;
+    bottom: 100%;
+    left: 20px;
+    right: 100px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+.template-panel.show {
+    display: block;
+}
+.template-item {
+    padding: 10px 15px;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+}
+.template-item:hover {
+    background-color: #f5f7fa;
+}
+.template-item-title {
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 4px;
+}
+.template-item-content {
+    font-size: 12px;
+    color: #999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-layout-container">
+    <!-- 左侧：分配的账号列表 -->
+    <div class="account-sidebar">
+        <div class="sidebar-header">
+            <input type="text" id="account-search-input" class="layui-input" placeholder="搜索账号/号码...">
+        </div>
+        <div class="account-list" id="account-list">
+            <div class="loading-placeholder">
+                <i class="layui-icon layui-icon-loading"></i>
+                <p>加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 中间：会话列表 -->
+    <div class="conversation-panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <span class="filter-item active" data-filter="all">全部</span>
+                <span style="margin: 0 5px; color: #e8e8e8;">|</span>
+                <span class="filter-item" data-filter="unread">未读 <span id="unread-count">0</span></span>
+            </div>
+            <button class="layui-btn layui-btn-primary layui-btn-xs" id="btn-refresh-conv">
+                <i class="layui-icon layui-icon-refresh"></i>
+            </button>
+        </div>
+        <div class="conversation-list" id="conversation-list">
+            <div class="conversation-empty">
+                请选择账号
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：聊天窗口 -->
+    <div class="chat-panel">
+        <div class="chat-header" id="chat-header" style="display: none;">
+            <div style="display: flex; align-items: center;">
+                <span class="chat-contact-name" id="chat-contact-name">--</span>
+                <span class="chat-contact-number" id="chat-contact-number">--</span>
+            </div>
+            <div class="chat-actions">
+                <button class="layui-btn layui-btn-xs layui-btn-primary" id="btn-close-conv">
+                    <i class="layui-icon layui-icon-close"></i> 关闭会话
+                </button>
+            </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-placeholder">
+                <i class="layui-icon layui-icon-dialogue"></i>
+                <p>请选择一个会话开始聊天</p>
+            </div>
+        </div>
+        <div class="chat-input-area" id="chat-input-area" style="display: none; position: relative;">
+            <div class="chat-input-toolbar">
+                <i class="layui-icon layui-icon-face-smile" title="表情"></i>
+                <i class="layui-icon layui-icon-picture" title="图片"></i>
+                <i class="layui-icon layui-icon-file" title="文件"></i>
+                <i class="layui-icon layui-icon-template" title="快捷回复" id="btn-templates"></i>
+            </div>
+            <div class="template-panel" id="template-panel">
+                <!-- 模板列表动态加载 -->
+            </div>
+            <div class="chat-input-box">
+                <textarea id="message-input" placeholder="请输入发送的内容..." rows="1"></textarea>
+                <button class="layui-btn layui-btn-normal chat-send-btn" id="btn-send">发送</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% raw %}
+<script>
+layui.use(['layer', 'form'], function(){
+    var layer = layui.layer;
+    var form = layui.form;
+    
+    // 状态变量
+    var currentAccountId = null;
+    var currentConvId = null;
+    var currentContactNumber = null;
+    var templates = [];
+    var convFilter = 'all';
+    
+    // 初始化
+    loadAccounts();
+    loadTemplates();
+    
+    // ========== 账号列表 ==========
+    function loadAccounts() {
+        $.get('/api/accounts?limit=1000', function(res) {
+            if (res.code === 0) {
+                renderAccountList(res.data);
+            } else {
+                layer.msg('加载账号失败：' + res.msg, {icon: 2});
+            }
+        });
+    }
+    
+    function renderAccountList(accounts) {
+        var html = '';
+        if (!accounts || accounts.length === 0) {
+            html = '<div class="loading-placeholder"><p>暂无账号</p></div>';
+        } else {
+            accounts.forEach(function(acc) {
+                var statusClass = acc.status == 1 ? 'online' : 'offline';
+                var avatarClass = acc.status == 1 ? '' : 'offline';
+                var statusText = acc.status == 1 ? '在线' : '离线';
+                var region = acc.region || 'US';
+                var avatar = acc.username ? acc.username.charAt(0).toUpperCase() : 'A';
+                html += '<div class="account-item" data-id="' + acc.id + '">' +
+                    '<div class="account-avatar ' + avatarClass + '">' + avatar + '</div>' +
+                    '<div class="account-info">' +
+                        '<div class="account-number">' + (acc.phone_number || acc.username) + '</div>' +
+                        '<div class="account-meta">' +
+                            '<span class="status-dot ' + statusClass + '"></span>' +
+                            '<span>' + statusText + ' · ' + region + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<span class="check-icon">✓</span>' +
+                '</div>';
+            });
+        }
+        $('#account-list').html(html);
+        
+        // 绑定点击事件
+        $('.account-item').on('click', function() {
+            $('.account-item').removeClass('active');
+            $(this).addClass('active');
+            currentAccountId = $(this).data('id');
+            loadConversations(currentAccountId);
+        });
+    }
+    
+    // 账号搜索
+    $('#account-search-input').on('input', function() {
+        var keyword = $(this).val().toLowerCase();
+        $('.account-item').each(function() {
+            var number = $(this).find('.account-number').text().toLowerCase();
+            $(this).toggle(number.indexOf(keyword) !== -1);
+        });
+    });
+    
+    // ========== 会话列表 ==========
+    function loadConversations(accountId) {
+        $('#conversation-list').html(
+            '<div class="loading-placeholder">' +
+                '<i class="layui-icon layui-icon-loading"></i>' +
+                '<p>加载中...</p>' +
+            '</div>'
+        );
+        
+        $.get('/api/conversations', {account_id: accountId, limit: 100}, function(res) {
+            if (res.code === 0) {
+                renderConversationList(res.data);
+                updateUnreadCount(res.data);
+            } else {
+                layer.msg('加载会话失败：' + res.msg, {icon: 2});
+            }
+        });
+    }
+    
+    function renderConversationList(conversations) {
+        var html = '';
+        if (!conversations || conversations.length === 0) {
+            html = '<div class="conversation-empty">暂无会话</div>';
+        } else {
+            conversations.forEach(function(conv) {
+                // 根据过滤器筛选
+                if (convFilter === 'unread' && conv.unread_count == 0) return;
+                
+                var unreadClass = conv.unread_count > 0 ? 'unread' : '';
+                var previewClass = conv.unread_count > 0 ? 'unread' : '';
+                var badgeHtml = conv.unread_count > 0 ? 
+                    '<span class="unread-badge">' + conv.unread_count + '</span>' : '';
+                var starHtml = conv.is_starred ? 
+                    '<i class="layui-icon layui-icon-star-fill star-icon"></i>' : '';
+                var time = formatTime(conv.last_message_at);
+                
+                html += '<div class="conversation-item ' + unreadClass + '" data-id="' + conv.id + '" data-contact="' + conv.contact_number + '">' +
+                    '<div class="conv-top">' +
+                        '<span class="conv-contact">' + starHtml + conv.contact_number + ' ' + badgeHtml + '</span>' +
+                        '<span class="conv-time">' + time + '</span>' +
+                    '</div>' +
+                    '<div class="conv-bottom">' +
+                        '<span class="conv-preview ' + previewClass + '">' + (conv.last_preview || '暂无消息') + '</span>' +
+                    '</div>' +
+                '</div>';
+            });
+        }
+        $('#conversation-list').html(html || '<div class="conversation-empty">暂无会话</div>');
+        
+        // 绑定点击事件
+        $('.conversation-item').on('click', function() {
+            $('.conversation-item').removeClass('active');
+            $(this).addClass('active');
+            currentConvId = $(this).data('id');
+            currentContactNumber = $(this).data('contact');
+            openConversation(currentConvId, currentContactNumber);
+        });
+    }
+    
+    function updateUnreadCount(conversations) {
+        var count = 0;
+        if (conversations) {
+            conversations.forEach(function(c) { count += c.unread_count || 0; });
+        }
+        $('#unread-count').text(count);
+    }
+    
+    // 会话过滤器
+    $('.filter-item').on('click', function() {
+        $('.filter-item').removeClass('active');
+        $(this).addClass('active');
+        convFilter = $(this).data('filter');
+        if (currentAccountId) {
+            loadConversations(currentAccountId);
+        }
+    });
+    
+    // 刷新会话
+    $('#btn-refresh-conv').on('click', function() {
+        if (currentAccountId) {
+            loadConversations(currentAccountId);
+        }
+    });
+    
+    // ========== 聊天窗口 ==========
+    function openConversation(convId, contactNumber) {
+        $('#chat-header').show();
+        $('#chat-input-area').show();
+        $('#chat-contact-name').text(contactNumber);
+        $('#chat-contact-number').text(contactNumber);
+        
+        loadMessages(convId);
+        markRead(convId);
+    }
+    
+    function loadMessages(convId) {
+        $('#chat-messages').html(
+            '<div class="loading-placeholder">' +
+                '<i class="layui-icon layui-icon-loading"></i>' +
+                '<p>加载消息...</p>' +
+            '</div>'
+        );
+        
+        $.get('/api/messages', {conv_id: convId}, function(res) {
+            if (res.code === 0) {
+                renderMessages(res.data);
+            } else {
+                $('#chat-messages').html('<div class="chat-placeholder"><p>加载消息失败</p></div>');
+            }
+        });
+    }
+    
+    function renderMessages(messages) {
+        var html = '';
+        if (!messages || messages.length === 0) {
+            html = '<div class="chat-placeholder"><p>暂无消息</p></div>';
+        } else {
+            messages.forEach(function(msg) {
+                var isRight = msg.direction == 2; // 2 = 发送
+                var alignClass = isRight ? 'chat-bubble-right' : 'chat-bubble-left';
+                var time = formatTime(msg.sent_at);
+                html += '<div class="chat-bubble ' + alignClass + '">' +
+                    '<div class="chat-bubble-inner">' +
+                        '<div class="chat-bubble-content">' + escapeHtml(msg.content) + '</div>' +
+                        '<div class="chat-bubble-time">' + time + '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+        }
+        $('#chat-messages').html(html);
+        scrollToBottom();
+    }
+    
+    function scrollToBottom() {
+        var container = $('#chat-messages')[0];
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function markRead(convId) {
+        $.post('/api/conversations/mark_read', {conv_id: convId}, function(res) {
+            if (res.code === 0 && currentAccountId) {
+                loadConversations(currentAccountId);
+            }
+        });
+    }
+    
+    // 发送消息
+    $('#btn-send').on('click', sendMessage);
+    $('#message-input').on('keypress', function(e) {
+        if (e.which === 13 && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    function sendMessage() {
+        var content = $('#message-input').val().trim();
+        if (!content) return;
+        if (!currentConvId) {
+            layer.msg('请先选择会话', {icon: 0});
+            return;
+        }
+        
+        $.ajax({
+            url: '/api/messages/send',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({conv_id: currentConvId, content: content}),
+            success: function(res) {
+                if (res.code === 0) {
+                    $('#message-input').val('');
+                    loadMessages(currentConvId);
+                    if (currentAccountId) {
+                        loadConversations(currentAccountId);
+                    }
+                } else {
+                    layer.msg('发送失败：' + res.msg, {icon: 2});
+                }
+            }
+        });
+    }
+    
+    // 关闭会话
+    $('#btn-close-conv').on('click', function() {
+        if (!currentConvId) return;
+        layer.confirm('确定关闭该会话？', function(index) {
+            $.post('/api/conversations/close', {conv_id: currentConvId}, function(res) {
+                if (res.code === 0) {
+                    layer.msg('会话已关闭', {icon: 1});
+                    resetChatArea();
+                    if (currentAccountId) {
+                        loadConversations(currentAccountId);
+                    }
+                } else {
+                    layer.msg('关闭失败：' + res.msg, {icon: 2});
+                }
+            });
+            layer.close(index);
+        });
+    });
+    
+    function resetChatArea() {
+        $('#chat-header').hide();
+        $('#chat-input-area').hide();
+        $('#chat-messages').html(
+            '<div class="chat-placeholder">' +
+                '<i class="layui-icon layui-icon-dialogue"></i>' +
+                '<p>请选择一个会话开始聊天</p>' +
+            '</div>'
+        );
+        currentConvId = null;
+        currentContactNumber = null;
+    }
+    
+    // ========== 快捷回复模板 ==========
+    function loadTemplates() {
+        $.get('/api/templates', function(res) {
+            if (res.code === 0) {
+                templates = res.data || [];
+                renderTemplatePanel();
+            }
+        });
+    }
+    
+    function renderTemplatePanel() {
+        var html = '';
+        if (templates.length === 0) {
+            html = '<div class="template-item"><div class="template-item-title">暂无模板</div></div>';
+        } else {
+            templates.forEach(function(tpl) {
+                html += '<div class="template-item" data-content="' + escapeHtml(tpl.content) + '">' +
+                    '<div class="template-item-title">' + tpl.name + '</div>' +
+                    '<div class="template-item-content">' + tpl.content + '</div>' +
+                '</div>';
+            });
+        }
+        $('#template-panel').html(html);
+        
+        // 绑定点击
+        $('.template-item').on('click', function() {
+            var content = $(this).data('content');
+            $('#message-input').val(content);
+            $('#template-panel').removeClass('show');
+        });
+    }
+    
+    $('#btn-templates').on('click', function() {
+        $('#template-panel').toggleClass('show');
+    });
+    
+    // 点击其他地方关闭模板面板
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#btn-templates, #template-panel').length) {
+            $('#template-panel').removeClass('show');
+        }
+    });
+    
+    // ========== 工具函数 ==========
+    function formatTime(timeStr) {
+        if (!timeStr) return '--';
+        var date = new Date(timeStr);
+        var now = new Date();
+        var isToday = date.toDateString() === now.toDateString();
+        
+        if (isToday) {
+            return date.getHours().toString().padStart(2, '0') + ':' + 
+                   date.getMinutes().toString().padStart(2, '0');
+        } else {
+            return (date.getMonth() + 1) + '/' + date.getDate();
+        }
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+});
+</script>
+{% endraw %}
+{% endblock %}

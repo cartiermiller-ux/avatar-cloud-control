@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header"><i class="layui-icon layui-icon-survey" style="margin-right:5px;"></i>账号分配日志</div>
+    <div class="layui-card-body">
+        <table id="logs-table" lay-filter="logs-table"></table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% raw %}
+<script>
+layui.use(['table', 'layer'], function(){
+    var table = layui.table;
+
+    table.render({
+        elem: '#logs-table',
+        url: '/api/assign_logs',
+        page: true,
+        limit: 20,
+        cols: [[
+            {field:'id', title:'ID', width:60, sort:true},
+            {field:'account_id', title:'账号ID', width:90},
+            {field:'account_username', title:'账号名', width:150, templet:function(d){
+                return d.account_username || '<span style="color:#ccc">-</span>';
+            }},
+            {field:'operate_type', title:'操作类型', width:100, templet:function(d){
+                if(d.operate_type==='assign')
+                    return '<span class="layui-badge layui-bg-blue">分配</span>';
+                if(d.operate_type==='recover')
+                    return '<span class="layui-badge layui-bg-orange">回收</span>';
+                return '<span>'+(d.operate_type||'-')+'</span>';
+            }},
+            {field:'old_salesman_name', title:'原业务员', width:120, templet:function(d){
+                return d.old_salesman_name || '<span style="color:#ccc">-</span>';
+            }},
+            {field:'new_salesman_name', title:'新业务员', width:120, templet:function(d){
+                return d.new_salesman_name || '<span style="color:#ccc">-</span>';
+            }},
+            {field:'operator_name', title:'操作人', width:100, templet:function(d){
+                return d.operator_name || '<span style="color:#ccc">-</span>';
+            }},
+            {field:'operate_time', title:'操作时间', width:170},
+            {field:'remark', title:'备注', minWidth:120}
+        ]],
+        parseData: function(res){
+            return {
+                "code": res.code,
+                "msg": res.msg,
+                "count": res.count,
+                "data": res.data
+            };
+        }
+    });
+});
+</script>
+{% endraw %}
+{% endblock %}

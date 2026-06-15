@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+.search-bar { margin-bottom: 15px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header"><i class="layui-icon layui-icon-username" style="margin-right:5px;"></i>账号管理</div>
+    <div class="layui-card-body">
+        <div class="search-bar layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <input type="text" id="search-account" placeholder="搜索用户名/手机号..." class="layui-input">
+            </div>
+            <div class="layui-col-md2">
+                <button class="layui-btn layui-btn-primary" id="btn-search"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+            </div>
+        </div>
+        <table id="accounts-table" lay-filter="accounts-table"></table>
+    </div>
+</div>
+
+<script type="text/html" id="table-toolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" id="btn-batch-import" lay-event="import"><i class="layui-icon layui-icon-upload"></i> 批量导入</button>
+        <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="assign_salesman"><i class="layui-icon layui-icon-user"></i> 分配业务员</button>
+        <button class="layui-btn layui-btn-sm layui-btn-danger" id="btn-batch-recover" lay-event="recover"><i class="layui-icon layui-icon-refresh"></i> 批量回收</button>
+        <button class="layui-btn layui-btn-warm layui-btn-sm" lay-event="export"><i class="layui-icon layui-icon-export"></i> 导出</button>
+        <button class="layui-btn layui-btn-warm layui-btn-sm" lay-event="refresh"><i class="layui-icon layui-icon-refresh-1"></i> 刷新</button>
+    </div>
+</script>
+
+<script type="text/html" id="row-toolbar">
+    <button class="layui-btn layui-btn-xs" lay-event="edit">编辑</button>
+    <button class="layui-btn layui-btn-xs layui-btn-normal" lay-event="assign_ip">分配IP</button>
+    <button class="layui-btn layui-btn-xs layui-btn-warm" lay-event="change_ip">换IP</button>
+    <button class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</button>
+</script>
+
+<!-- 弹窗模板 -->
+<script type="text/html" id="account-dialog-tpl">
+<div style="padding:20px;">
+    <form class="layui-form" lay-filter="account-form">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">用户名 *</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="username" lay-verify="required" placeholder="TextNow 用户名" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">密码</label>
+                    <div class="layui-input-block">
+                        <input type="password" name="password" placeholder="不修改请留空" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">手机号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="phone_number" placeholder="+1234567890" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">Email</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="email" placeholder="邮箱地址" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="1">正常</option>
+                            <option value="0">禁用</option>
+                            <option value="2">异常/过期</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">健康度</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="health_score" placeholder="0-100" min="0" max="100" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">代理</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="proxy" placeholder="http://user:pass@host:port" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">SID</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="sid" placeholder="Session ID" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">Token</label>
+                    <div class="layui-input-block">
+                        <textarea name="token" rows="2" placeholder="认证 Token" class="layui-textarea"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">User-Agent</label>
+                    <div class="layui-input-block">
+                        <textarea name="user_agent" rows="2" placeholder="浏览器 UA" class="layui-textarea"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">PX Auth</label>
+                    <div class="layui-input-block">
+                        <textarea name="px_auth" rows="2" placeholder="X-PX-AUTHORIZATION" class="layui-textarea"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">Device FP</label>
+                    <div class="layui-input-block">
+                        <textarea name="device_fp" rows="2" placeholder="设备指纹" class="layui-textarea"></textarea>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">IDFA</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="idfa" placeholder="广告标识符" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">Client ID</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="client_id" placeholder="客户端ID" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr style="margin:15px 0;border-color:#eee;">
+        <div class="layui-form-item">
+            <div class="layui-input-block" style="margin-left:0 !important;text-align:center;">
+                <button class="layui-btn" lay-submit lay-filter="save-account"><i class="layui-icon layui-icon-ok"></i> 保存修改</button>
+                <button type="button" class="layui-btn layui-btn-primary" onclick="layer.closeAll()">取消</button>
+            </div>
+        </div>
+    </form>
+</div>
+</script>
+
+<!-- 导出弹窗模板 -->
+<script type="text/html" id="export-dialog-tpl">
+<div style="padding:20px;">
+    <form class="layui-form" lay-filter="export-form">
+        <div class="layui-form-item">
+            <label class="layui-form-label">导出格式</label>
+            <div class="layui-input-block">
+                <select name="format" lay-filter="export-format">
+                    <option value="csv">CSV (.csv)</option>
+                    <option value="txt">TXT (.txt)</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">导出范围</label>
+            <div class="layui-input-block">
+                <select name="scope" lay-filter="export-scope">
+                    <option value="all">全部账号</option>
+                    <option value="active">仅正常账号(status=1)</option>
+                    <option value="selected">仅选中行</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">导出模式</label>
+            <div class="layui-input-block">
+                <select name="mode" lay-filter="export-mode">
+                    <option value="internal">内部自用（保留IP绑定，含代理信息）</option>
+                    <option value="external">对外分发（导出后自动解绑回收IP）</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item" id="external-warning" style="display:none;">
+            <div class="layui-input-block">
+                <span style="color:#FF5722;font-size:13px;">对外分发模式：导出后账号的IP绑定将被自动解除，IP回收到可用池供重新分配</span>
+            </div>
+        </div>
+        <hr style="margin:15px 0;border-color:#eee;">
+        <div class="layui-form-item">
+            <div class="layui-input-block" style="margin-left:0 !important;text-align:center;">
+                <button class="layui-btn" lay-submit lay-filter="do-export"><i class="layui-icon layui-icon-export"></i> 开始导出</button>
+                <button type="button" class="layui-btn layui-btn-primary" onclick="layer.closeAll()">取消</button>
+            </div>
+        </div>
+    </form>
+</div>
+</script>
+
+{% endblock %}
+
+{% block extra_js %}
+{% raw %}
+<script>
+layui.use(['table', 'form', 'upload'], function(){
+    var table = layui.table;
+    var form = layui.form;
+    var layer = layui.layer;
+
+    var DIALOG_HTML = $('#account-dialog-tpl').html();
+
+    function openDialog(title, data){
+        layer.open({
+            type: 1,
+            title: title,
+            content: DIALOG_HTML,
+            area: ['720px', '680px'],
+            maxmin: true,
+            scrollbar: false,
+            success: function(layero){
+                var $f = layero.find('form');
+                if(data){
+                    $f.find('[name=id]').val(data.id || '');
+                    $f.find('[name=username]').val(data.username || '');
+                    $f.find('[name=password]').val('');
+                    $f.find('[name=phone_number]').val(data.phone_number || '');
+                    $f.find('[name=email]').val(data.email || '');
+                    $f.find('[name=status]').val(data.status != null ? data.status : 1);
+                    $f.find('[name=health_score]').val(data.health_score || 100);
+                    $f.find('[name=proxy]').val(data.proxy || '');
+                    $f.find('[name=sid]').val(data.sid || '');
+                    $f.find('[name=token]').val(data.token || '');
+                    $f.find('[name=user_agent]').val(data.user_agent || '');
+                    $f.find('[name=px_auth]').val(data.px_auth || '');
+                    $f.find('[name=device_fp]').val(data.device_fp || '');
+                    $f.find('[name=idfa]').val(data.idfa || '');
+                    $f.find('[name=client_id]').val(data.client_id || '');
+                }
+                form.render(null, 'account-form');
+                layero.find('.layui-layer-content').css({'overflow-y':'auto','overflow-x':'hidden','pointer-events':'auto'});
+                layero.find('.layui-layer-content').on('mousewheel DOMMouseScroll', function(e){ e.stopPropagation(); });
+            }
+        });
+    }
+
+    var tableIns = table.render({
+        elem: '#accounts-table',
+        url: '/api/accounts',
+        page: true,
+        limit: 20,
+        toolbar: '#table-toolbar',
+        cols: [[
+            {type:'checkbox', fixed:'left'},
+            {field:'id', title:'ID', width:70, sort:true},
+            {field:'username', title:'用户名', minWidth:140},
+            {field:'phone_number', title:'手机号', width:150, templet:function(d){ return d.phone_number || '-'; }},
+            {field:'status', title:'状态', width:90, templet:function(d){
+                if(d.status==1) return '<span class="layui-badge layui-bg-green">正常</span>';
+                if(d.status==0) return '<span class="layui-badge">禁用</span>';
+                return '<span class="layui-badge layui-bg-red">异常</span>';
+            }},
+            {field:'bind_ip', title:'绑定IP', width:140, templet:function(d){
+                return d.bind_ip || '<span style="color:#ccc">未分配</span>';
+            }},
+            {field:'salesman_name', title:'归属业务员', width:120, templet:function(d){
+                return d.salesman_name || '<span style="color:#ccc">未分配</span>';
+            }},
+            {field:'health_score', title:'健康度', width:80},
+            {field:'last_used_at', title:'最后使用', width:160, templet:function(d){ return formatTime(d.last_used_at); }},
+            {title:'操作', toolbar:'#row-toolbar', width:280, fixed:'right'}
+        ]]
+    });
+
+    $('#btn-search').on('click', function(){
+        tableIns.reload({where:{search:$('#search-account').val()}, page:{curr:1}});
+    });
+
+    table.on('toolbar(accounts-table)', function(obj){
+        if(obj.event==='import') doBatchImport();
+        else if(obj.event==='assign_salesman') openAssignSalesmanDialog();
+        else if(obj.event==='recover') doBatchRecover();
+        else if(obj.event==='export') openExportDialog();
+        else if(obj.event==='refresh') tableIns.reload();
+    });
+
+    function doBatchImport(){
+        layui.upload.render({
+            elem:'#btn-batch-import',
+            url:'/api/accounts/batch_import',
+            accept:'file',
+            exts:'csv|xlsx|xls|jsonl',
+            before:function(){ this.idx=layer.msg('上传导入中...',{icon:16,shade:0.3,time:0}); },
+            done:function(res){
+                layer.close(this.idx);
+                if(res.code===0) layer.msg(res.msg,{icon:1,time:5000},function(){tableIns.reload();});
+                else layer.msg(res.msg,{icon:2,time:5000});
+            },
+            error:function(){ layer.close(this.idx); layer.msg('上传失败',{icon:2}); }
+        });
+    }
+
+    table.on('tool(accounts-table)', function(obj){
+        if(obj.event==='edit'){
+            var idx=layer.load(1);
+            $.get('/api/accounts/'+obj.data.id, function(res){
+                layer.close(idx);
+                if(res.code==0) openDialog('编辑账号 #'+res.data.id, res.data);
+                else layer.msg(res.msg||'加载失败',{icon:2});
+            });
+        } else if(obj.event==='assign_ip'){
+            openIpDialog(obj.data.id, obj.data.username);
+        } else if(obj.event==='change_ip'){
+            doChangeIp(obj.data.id, obj.data.username, obj.data.bind_ip);
+        } else if(obj.event==='del'){
+            layer.confirm('确定删除？删除后绑定的IP将自动回收。',function(i){
+                $.post('/api/accounts/delete',{id:obj.data.id},function(res){
+                    if(res.code==0){layer.msg('已删除，IP已回收',{icon:1});tableIns.reload();}
+                    else layer.msg(res.msg||'删除失败',{icon:2});
+                });
+                layer.close(i);
+            });
+        }
+    });
+
+    function openIpDialog(accountId, accountName){
+        $.get('/api/accounts/' + accountId, function(res){
+            if(res.code !== 0) { layer.msg('加载账号失败', {icon:2}); return; }
+            var currentIp = res.data.bind_ip || '未分配';
+
+            $.get('/api/ip/available', function(ipRes){
+                var ipOpts = '<option value="">请选择IP</option>';
+                if(ipRes.code === 0 && ipRes.data.length > 0){
+                    ipRes.data.forEach(function(item){
+                        ipOpts += '<option value="' + item.id + '">' + item.ip + ':' + item.port + ' (' + (item.area||'未知地区') + ')</option>';
+                    });
+                }
+
+                var html = '<div style="padding:20px;">' +
+                    '<p style="margin-bottom:15px;font-size:14px;color:#333;">为账号 <strong>"' + accountName + '"</strong> 分配住宅IP</p>' +
+                    '<p style="margin-bottom:15px;font-size:13px;color:#999;">当前绑定：' + currentIp + '</p>' +
+                    '<form class="layui-form" lay-filter="assign-ip-form">' +
+                    '<input type="hidden" name="account_id" value="' + accountId + '">' +
+                    '<div class="layui-form-item">' +
+                    '<label class="layui-form-label">选择IP</label>' +
+                    '<div class="layui-input-block">' +
+                    '<select name="ip_id" lay-filter="ip-select">' + ipOpts + '</select>' +
+                    '</div></div>' +
+                    '<div class="layui-form-item" style="text-align:center;">' +
+                    '<button class="layui-btn" lay-submit lay-filter="submit-assign-ip">确定分配</button>' +
+                    '<button type="button" class="layui-btn layui-btn-primary" onclick="layui.layer.closeAll()">取消</button>' +
+                    '<button type="button" class="layui-btn layui-btn-warm" id="btn-unassign-ip" style="margin-left:10px;">解除绑定</button>' +
+                    '</div></form></div>';
+
+                var idx = layer.open({
+                    type: 1,
+                    title: '分配住宅IP',
+                    area: ['480px', '340px'],
+                    content: html,
+                    success: function(layero){
+                        form.render(null, 'assign-ip-form');
+                    }
+                });
+
+                $(document).off('click', '#btn-unassign-ip').on('click', '#btn-unassign-ip', function(){
+                    layer.confirm('确定解除IP绑定？', function(ci){
+                        $.post('/api/ip/unassign', {account_id: accountId}, function(r){
+                            if(r.code === 0){
+                                layer.msg('已解除绑定', {icon:1});
+                                layer.closeAll();
+                                tableIns.reload();
+                            } else {
+                                layer.msg(r.msg || '解除失败', {icon:2});
+                            }
+                        });
+                        layer.close(ci);
+                    });
+                });
+
+                form.on('submit(submit-assign-ip)', function(data2){
+                    var ipId = data2.field.ip_id;
+                    if(!ipId){
+                        layer.msg('请选择一个IP', {icon:0});
+                        return false;
+                    }
+                    $.ajax({
+                        url: '/api/ip/assign',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({account_id: accountId, ip_id: parseInt(ipId)}),
+                        success: function(r2){
+                            if(r2.code === 0){
+                                layer.msg('IP分配成功', {icon:1});
+                                layer.closeAll();
+                                tableIns.reload();
+                            } else {
+                                layer.msg(r2.msg || '分配失败', {icon:2});
+                            }
+                        }
+                    });
+                    return false;
+                });
+            });
+        });
+    }
+
+    function doChangeIp(accountId, accountName, currentIp){
+        if(!currentIp || currentIp === '未分配'){
+            openIpDialog(accountId, accountName);
+            return;
+        }
+        layer.confirm('当前绑定IP: <strong>' + currentIp + '</strong><br>更换IP将自动回收旧IP，确定继续？', {
+            title: '更换IP确认',
+            btn: ['确定更换', '取消']
+        }, function(ci){
+            layer.close(ci);
+            $.post('/api/ip/unassign', {account_id: accountId}, function(r){
+                if(r.code === 0){
+                    openIpDialog(accountId, accountName);
+                } else {
+                    layer.msg(r.msg || '解绑旧IP失败', {icon:2});
+                }
+            });
+        });
+    }
+
+    function openExportDialog(){
+        var EXPORT_HTML = $('#export-dialog-tpl').html();
+        layer.open({
+            type: 1,
+            title: '导出账号',
+            area: ['520px', '400px'],
+            content: EXPORT_HTML,
+            success: function(layero){
+                form.render(null, 'export-form');
+                form.on('select(export-mode)', function(data){
+                    layero.find('#external-warning').toggle(data.value === 'external');
+                });
+            }
+        });
+    }
+
+    form.on('submit(do-export)', function(data2){
+        var f = data2.field;
+        var params = 'format=' + f.format + '&scope=' + f.scope + '&mode=' + f.mode;
+        if(f.scope === 'selected'){
+            var checkStatus = table.checkStatus('accounts-table');
+            if(!checkStatus.data.length){
+                layer.msg('请先选中要导出的行', {icon:0});
+                return false;
+            }
+            var ids = checkStatus.data.map(function(d){ return d.id; }).join(',');
+            params += '&ids=' + ids;
+        }
+        window.location.href = '/api/accounts/export?' + params;
+        layer.closeAll();
+        layer.msg('导出中...', {icon:16, time:2000});
+        return false;
+    });
+
+    function openAssignSalesmanDialog(){
+        var checkStatus = table.checkStatus('accounts-table');
+        var selected = checkStatus.data;
+        if(!selected.length){
+            layer.msg('请先勾选要分配的账号', {icon:0});
+            return;
+        }
+
+        $.get('/api/salesman/list_all', function(res){
+            var smOpts = '<option value="">请选择业务员</option>';
+            if(res.code === 0 && res.data.length > 0){
+                res.data.forEach(function(s){
+                    smOpts += '<option value="'+s.id+'">'+s.name+' (工号:'+s.employee_id+')</option>';
+                });
+            } else {
+                smOpts += '<option value="" disabled>暂无业务员，请先添加</option>';
+            }
+
+            var html = '<div style="padding:20px;">'+
+                '<p style="margin-bottom:15px;font-size:14px;">已选中 <strong>'+selected.length+'</strong> 个账号，请选择归属业务员：</p>'+
+                '<form class="layui-form" lay-filter="assign-sm-form">'+
+                '<div class="layui-form-item"><label class="layui-form-label">业务员</label><div class="layui-input-block">'+
+                '<select name="salesman_id" lay-filter="sm-select">'+smOpts+'</select>'+
+                '</div></div>'+
+                '<div class="layui-form-item" style="text-align:center;">'+
+                '<button class="layui-btn" lay-submit lay-filter="submit-assign-sm">确认分配</button>'+
+                '<button type="button" class="layui-btn layui-btn-warm" id="btn-unassign-sm">解除绑定</button>'+
+                '<button type="button" class="layui-btn layui-btn-primary" onclick="layui.layer.closeAll()">取消</button>'+
+                '</div></form></div>';
+
+            var idx = layer.open({
+                type:1,
+                title:'分配业务员',
+                area:['450px','300px'],
+                content:html,
+                success:function(layero){
+                    form.render(null, 'assign-sm-form');
+                }
+            });
+
+            form.on('submit(submit-assign-sm)', function(d2){
+                var smId = d2.field.salesman_id;
+                if(!smId){ layer.msg('请选择业务员', {icon:0}); return false; }
+                var aids = selected.map(function(d){ return d.id; });
+                $.ajax({
+                    url:'/api/accounts/assign_salesman', type:'POST', contentType:'application/json',
+                    data:JSON.stringify({account_ids:aids, salesman_id:parseInt(smId)}),
+                    success:function(r){
+                        if(r.code===0){
+                            layer.msg(r.msg, {icon:1}, function(){ layer.closeAll(); tableIns.reload(); });
+                        } else { layer.msg(r.msg||'分配失败', {icon:2}); }
+                    }
+                });
+                return false;
+            });
+
+            $(document).off('click','#btn-unassign-sm').on('click','#btn-unassign-sm', function(){
+                layer.confirm('确定解除这 '+selected.length+' 个账号的业务员绑定？', function(ci){
+                    var aids = selected.map(function(d){ return d.id; });
+                    $.ajax({
+                        url:'/api/accounts/unassign_salesman', type:'POST', contentType:'application/json',
+                        data:JSON.stringify({account_ids:aids}),
+                        success:function(r){
+                            if(r.code===0){
+                                layer.msg(r.msg, {icon:1}, function(){ layer.closeAll(); tableIns.reload(); });
+                            } else { layer.msg(r.msg||'解除失败', {icon:2}); }
+                        }
+                    });
+                    layer.close(ci);
+                });
+            });
+        });
+    }
+
+    function doBatchRecover(){
+        var checkStatus = table.checkStatus('accounts-table');
+        var selected = checkStatus.data;
+        if(!selected.length){
+            layer.msg('请先勾选要回收的账号', {icon:0});
+            return;
+        }
+        layer.confirm('确定回收这 <strong>'+selected.length+'</strong> 个账号？回收后将解除业务员绑定。', function(ci){
+            var aids = selected.map(function(d){ return d.id; });
+            $.ajax({
+                url:'/api/accounts/recover',
+                type:'POST',
+                contentType:'application/json',
+                data:JSON.stringify({account_ids:aids}),
+                success:function(r){
+                    if(r.code===0){
+                        layer.msg(r.msg, {icon:1}, function(){ tableIns.reload(); });
+                    } else { layer.msg(r.msg||'回收失败', {icon:2}); }
+                }
+            });
+            layer.close(ci);
+        });
+    }
+
+    form.on('submit(save-account)', function(data){
+        var f=data.field, isEdit=!!f.id;
+        $.ajax({
+            url:'/api/accounts/update',
+            method:'POST',
+            data:f,
+            success:function(res){
+                if(res.code===0){
+                    layer.msg(isEdit?'保存成功':'添加成功',{icon:1});
+                    layer.closeAll();
+                    tableIns.reload();
+                } else layer.msg(res.msg||'操作失败',{icon:2});
+            },
+            error:function(){ layer.msg('请求失败',{icon:2}); }
+        });
+        return false;
+    });
+});
+</script>
+{% endraw %}
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+.search-bar { margin-bottom: 15px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header"><i class="layui-icon layui-icon-username" style="margin-right:5px;"></i>我的账号</div>
+    <div class="layui-card-body">
+        <div class="search-bar layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <input type="text" id="search-account" placeholder="搜索用户名/手机号..." class="layui-input">
+            </div>
+            <div class="layui-col-md2">
+                <button class="layui-btn layui-btn-primary" id="btn-search"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+            </div>
+            <div class="layui-col-md2 layui-col-md-offset1" style="line-height:38px;color:#999;">
+                <span id="total-hint"></span>
+            </div>
+        </div>
+        <table id="accounts-table" lay-filter="accounts-table"></table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% raw %}
+<script>
+layui.use(['table', 'form', 'layer'], function(){
+    var table = layui.table;
+    var layer = layui.layer;
+
+    var tableIns = table.render({
+        elem: '#accounts-table',
+        url: '/api/salesman/accounts',
+        page: true,
+        limit: 20,
+        cols: [[
+            {field:'id', title:'ID', width:70, sort:true},
+            {field:'username', title:'用户名', minWidth:140},
+            {field:'phone_number', title:'手机号', width:150, templet:function(d){ return d.phone_number || '-'; }},
+            {field:'status', title:'状态', width:90, templet:function(d){
+                if(d.status==1) return '<span class="layui-badge layui-bg-green">正常</span>';
+                if(d.status==0) return '<span class="layui-badge">禁用</span>';
+                return '<span class="layui-badge layui-bg-red">异常</span>';
+            }},
+            {field:'bind_ip', title:'绑定IP', width:140, templet:function(d){
+                return d.bind_ip || '<span style="color:#ccc">未分配</span>';
+            }},
+            {field:'health_score', title:'健康度', width:80},
+            {field:'last_used_at', title:'最后使用', width:160, templet:function(d){ return formatTime(d.last_used_at); }},
+            {field:'created_at', title:'注册时间', width:160}
+        ]]
+    });
+
+    // 搜索
+    $('#btn-search').on('click', function(){
+        tableIns.reload({where:{search:$('#search-account').val()}, page:{curr:1}});
+    });
+
+    // 回车搜索
+    $('#search-account').on('keydown', function(e){
+        if(e.keyCode===13) $('#btn-search').click();
+    });
+});
+// 时间格式化
+function formatTime(ts){
+    if(!ts) return '-';
+    if(ts.length && ts.length>=19) return ts.slice(0,19).replace('T',' ');
+    return ts;
+}
+</script>
+{% endraw %}
+{% endblock %}

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}阿凡达云控{% endblock %}</title>
+    <!-- Layui 原生样式 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui@2.9.10/dist/css/layui.css">
+    <style>
+        /* 原生 Layui Admin 样式 */
+        .layui-layout-admin .layui-header {
+            background-color: #23262E;
+        }
+        .layui-layout-admin .layui-logo {
+            color: #fff;
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+        .layui-layout-admin .layui-side {
+            top: 60px;
+            background-color: #393D49;
+        }
+        .layui-layout-admin .layui-body {
+            top: 60px;
+            background-color: #f2f2f2;
+        }
+        .layui-layout-admin .layui-footer {
+            background-color: #fff;
+        }
+        /* 侧边栏菜单样式 */
+        .layui-side .layui-nav {
+            background-color: #393D49;
+        }
+        .layui-side .layui-nav .layui-nav-item a {
+            color: #c2c2c2;
+        }
+        .layui-side .layui-nav .layui-nav-item a:hover {
+            color: #fff;
+        }
+        .layui-side .layui-nav .layui-nav-itemed > a {
+            color: #fff;
+        }
+        .layui-side .layui-nav .layui-nav-child dd.layui-this,
+        .layui-side .layui-nav .layui-nav-child dd.layui-this a,
+        .layui-side .layui-nav .layui-nav-item.layui-this a {
+            background-color: #009688;
+            color: #fff;
+        }
+        /* 顶部导航 */
+        .layui-header .layui-nav {
+            background: transparent;
+        }
+        .layui-header .layui-nav .layui-nav-item a {
+            color: #fff;
+        }
+        .layui-header .layui-nav .layui-nav-item a:hover {
+            color: #999;
+        }
+        /* 卡片样式 */
+        .layui-card {
+            border-radius: 2px;
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
+        }
+        .layui-card-header {
+            font-weight: 500;
+            border-bottom: 1px solid #f6f6f6;
+        }
+        /* 按钮样式 */
+        .layui-btn-primary {
+            border-color: #009688;
+            color: #009688;
+        }
+        .layui-btn-primary:hover {
+            background-color: #009688;
+            color: #fff;
+        }
+        /* 表格样式 */
+        .layui-table-view {
+            border-radius: 2px;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="layui-layout-body">
+
+<div class="layui-layout layui-layout-admin">
+    <!-- 顶部导航栏 -->
+    <div class="layui-header">
+        <div class="layui-logo layui-hide-xs layui-bg-black">
+            <i class="layui-icon layui-icon-website" style="margin-right: 8px;"></i>阿凡达云控
+        </div>
+        <ul class="layui-nav layui-layout-right">
+            <li class="layui-nav-item layui-hide-xs">
+                <a href="javascript:;">
+                    <i class="layui-icon layui-icon-username" style="margin-right: 5px;"></i>
+                    {{ session.agent_nickname or session.agent_username }}
+                </a>
+            </li>
+            <li class="layui-nav-item layui-hide-xs">
+                <a href="/logout">
+                    <i class="layui-icon layui-icon-logout" style="margin-right: 5px;"></i>退出
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 侧边栏 -->
+    <div class="layui-side layui-side-menu">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-shrink="all" lay-filter="sidebar">
+                <li class="layui-nav-item {% if active_menu == 'dashboard' %}layui-this{% endif %}">
+                    <a href="/">
+                        <i class="layui-icon layui-icon-home"></i>
+                        <span>控制台</span>
+                    </a>
+                </li>
+                <li class="layui-nav-item {% if active_menu == 'accounts' %}layui-this{% endif %}">
+                    <a href="/accounts">
+                        <i class="layui-icon layui-icon-username"></i>
+                        <span>账号管理</span>
+                    </a>
+                </li>
+                <li class="layui-nav-item {% if active_menu == 'register' %}layui-this{% endif %}">
+                    <a href="/register">
+                        <i class="layui-icon layui-icon-form"></i>
+                        <span>注册任务</span>
+                    </a>
+                </li>
+                <li class="layui-nav-item {% if active_menu == 'matrix' %}layui-this{% endif %}">
+                    <a href="/matrix">
+                        <i class="layui-icon layui-icon-release"></i>
+                        <span>矩阵群发</span>
+                    </a>
+                </li>
+                <li class="layui-nav-item {% if active_menu == 'conversations' %}layui-this{% endif %}">
+                    <a href="/conversations">
+                        <i class="layui-icon layui-icon-dialogue"></i>
+                        <span>会话管理</span>
+                    </a>
+                </li>
+                <li class="layui-nav-item {% if active_menu == 'ip_manage' %}layui-this{% endif %}">
+                    <a href="/ip_manage">
+                        <i class="layui-icon layui-icon-engine"></i>
+                        <span>IP管理</span>
+                    </a>
+                </li>
+                {% if session.agent_role == 'admin' %}
+                <li class="layui-nav-item {% if active_menu == 'agents' %}layui-this{% endif %}">
+                    <a href="/agents">
+                        <i class="layui-icon layui-icon-group"></i>
+                        <span>代理管理</span>
+                    </a>
+                </li>
+                <li class="layui-nav-item {% if active_menu == 'salesmen' %}layui-this{% endif %}">
+                    <a href="/salesmen">
+                        <i class="layui-icon layui-icon-user"></i>
+                        <span>业务员管理</span>
+                    </a>
+                </li>
+                <li class="layui-nav-item {% if active_menu == 'assign_logs' %}layui-this{% endif %}">
+                    <a href="/assign_logs">
+                        <i class="layui-icon layui-icon-survey"></i>
+                        <span>分配日志</span>
+                    </a>
+                </li>
+                {% else %}
+                <li class="layui-nav-item {% if active_menu == 'salesman_account' %}layui-this{% endif %}">
+                    <a href="/salesman/account">
+                        <i class="layui-icon layui-icon-username"></i>
+                        <span>我的账号</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="layui-body">
+        <div style="padding: 15px;">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="layui-bg-red" style="padding:10px 15px;margin-bottom:15px;border-radius:2px;color:#fff;">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- 底部 -->
+    <div class="layui-footer">
+        © 2024 阿凡达云控 - 云端控制系统
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/layui@2.9.10/dist/layui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script>
+layui.use(['element', 'layer', 'table', 'form'], function(){
+    var element = layui.element;
+    var layer = layui.layer;
+
+    // 全局 AJAX 配置
+    $.ajaxSetup({
+        dataType: 'json',
+        error: function(xhr, status, error) {
+            layer.msg('请求失败：' + error, {icon: 2});
+        }
+    });
+});
+
+function formatTime(timestamp) {
+    if (!timestamp) return '-';
+    var date = new Date(timestamp);
+    return date.getFullYear() + '-' +
+        (date.getMonth() + 1).toString().padStart(2, '0') + '-' +
+        date.getDate().toString().padStart(2, '0') + ' ' +
+        date.getHours().toString().padStart(2, '0') + ':' +
+        date.getMinutes().toString().padStart(2, '0');
+}
+
+function showLoading(msg) {
+    return layui.layer.msg(msg || '加载中...', {icon: 16, shade: 0.3, time: 0});
+}
+
+function hideLoading(index) {
+    layui.layer.close(index);
+}
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

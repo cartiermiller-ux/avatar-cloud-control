@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header"><i class="layui-icon layui-icon-group" style="margin-right:5px;"></i>代理管理</div>
+    <div class="layui-card-body">
+        <table id="agents-table" lay-filter="agents-table"></table>
+    </div>
+</div>
+
+<!-- 表头工具栏 -->
+<script type="text/html" id="table-toolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-normal layui-btn-sm" lay-event="add"><i class="layui-icon layui-icon-add-1"></i> 添加代理</button>
+        <button class="layui-btn layui-btn-warm layui-btn-sm" lay-event="refresh"><i class="layui-icon layui-icon-refresh-1"></i> 刷新</button>
+    </div>
+</script>
+
+<!-- 行内工具栏 -->
+<script type="text/html" id="row-toolbar">
+    <button class="layui-btn layui-btn-xs" lay-event="edit">编辑</button>
+    <button class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</button>
+</script>
+
+<!-- 添加/编辑代理对话框模板 -->
+<script type="text/html" id="agent-dialog-tpl">
+    <form class="layui-form" id="agent-form" lay-filter="agent-form" style="padding:20px;">
+        <input type="hidden" name="id" id="agent-id">
+        <div class="layui-form-item">
+            <label class="layui-form-label">用户名 *</label>
+            <div class="layui-input-block">
+                <input type="text" name="username" id="agent-username" required lay-verify="required" placeholder="登录用户名" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">密码 *</label>
+            <div class="layui-input-block">
+                <input type="password" name="password" id="agent-password" required lay-verify="required" placeholder="登录密码" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">昵称</label>
+            <div class="layui-input-block">
+                <input type="text" name="nickname" id="agent-nickname" placeholder="显示名称" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">角色 *</label>
+            <div class="layui-input-block">
+                <select name="role" id="agent-role" required lay-verify="required">
+                    <option value="">请选择</option>
+                    <option value="admin">管理员</option>
+                    <option value="agent">坐席</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">状态</label>
+            <div class="layui-input-block">
+                <input type="checkbox" name="is_active" id="agent-active" lay-skin="switch" lay-text="启用|禁用" checked>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <button class="layui-btn" lay-submit lay-filter="save-agent">保存</button>
+                <button type="button" class="layui-btn layui-btn-primary" onclick="layui.layer.closeAll()">取消</button>
+            </div>
+        </div>
+    </form>
+</script>
+{% endblock %}
+
+{% block extra_js %}
+{% raw %}
+<script>
+layui.use(['table', 'form'], function(){
+    var table = layui.table;
+    var form = layui.form;
+    var layer = layui.layer;
+    var AGENT_DIALOG_HTML = $('#agent-dialog-tpl').html();
+
+    var tableIns = table.render({
+        elem: '#agents-table',
+        url: '/api/agents',
+        page: true,
+        limit: 20,
+        toolbar: '#table-toolbar',
+        cols: [[
+            {field: 'id', title: 'ID', width: 80, sort: true},
+            {field: 'username', title: '用户名'},
+            {field: 'nickname', title: '昵称', templet: function(d){ return d.nickname || '-'; }},
+            {field: 'role', title: '角色', width: 110, templet: function(d){
+                return d.role == 'admin' ? '<span class="layui-badge layui-bg-blue">管理员</span>' : '<span class="layui-badge layui-bg-gray">坐席</span>';
+            }},
+            {field: 'is_active', title: '状态', width: 100, templet: function(d){
+                return d.is_active == 1 ? '<span class="layui-badge layui-bg-green">启用</span>' : '<span class="layui-badge">禁用</span>';
+            }},
+            {field: 'last_login_time', title: '最后登录', width: 170, templet: function(d){ return formatTime(d.last_login_time); }},
+            {title: '操作', toolbar: '#row-toolbar', width: 150, fixed: 'right'}
+        ]]
+    });
+
+    table.on('toolbar(agents-table)', function(obj){
+        if(obj.event === 'add') showAddDialog();
+        else if(obj.event === 'refresh') tableIns.reload();
+    });
+
+    table.on('tool(agents-table)', function(obj){
+        if(obj.event === 'edit') editAgent(obj.data.id);
+        else if(obj.event === 'del') deleteAgent(obj.data.id, obj.data.username);
+    });
+
+    function showAddDialog(){
+        layer.open({
+            type: 1,
+            title: '添加代理',
+            content: AGENT_DIALOG_HTML,
+            area: ['500px', '400px'],
+            success: function(layero){
+                layero.find('#agent-form')[0].reset();
+                layero.find('#agent-id').val('');
+                layero.find('#agent-password').attr('placeholder', '登录密码（必填）');
+                form.render(null, 'agent-form');
+            }
+        });
+    }
+
+    function editAgent(id){
+        var idx = showLoading('加载中...');
+        $.get('/api/agents/' + id, function(res){
+            hideLoading(idx);
+            if(res.code == 0){
+                var d = res.data;
+                layer.open({
+                    type: 1,
+                    title: '编辑代理',
+                    content: AGENT_DIALOG_HTML,
+                    area: ['500px', '400px'],
+                    success: function(layero){
+                        layero.find('#agent-id').val(d.id);
+                        layero.find('#agent-username').val(d.username);
+                        layero.find('#agent-password').val('');
+                        layero.find('#agent-password').attr('placeholder', '不修改请留空');
+                        layero.find('#agent-nickname').val(d.nickname || '');
+                        layero.find('#agent-role').val(d.role);
+                        layero.find('#agent-active').prop('checked', d.is_active == 1);
+                        form.render(null, 'agent-form');
+                    }
+                });
+            } else {
+                layer.msg(res.msg || '加载失败', {icon:2});
+            }
+        });
+    }
+
+    function deleteAgent(id, username){
+        if(username == 'admin'){ layer.msg('不能删除管理员账号', {icon:2}); return; }
+        layer.confirm('确定删除该代理？', function(index){
+            $.post('/api/agents/delete', {id:id}, function(res){
+                if(res.code == 0){ layer.msg('删除成功', {icon:1}); tableIns.reload(); }
+                else layer.msg(res.msg || '删除失败', {icon:2});
+            });
+            layer.close(index);
+        });
+    }
+
+    form.on('submit(save-agent)', function(data){
+        var id = data.field.id;
+        var url = id ? '/api/agents/update' : '/api/agents/add';
+        if(id && !data.field.password) delete data.field.password;
+        $.ajax({
+            url: url, type:'POST', contentType:'application/json',
+            data: JSON.stringify(data.field),
+            success: function(res){
+                if(res.code == 0){ layer.msg('保存成功', {icon:1}); layer.closeAll(); tableIns.reload(); }
+                else layer.msg(res.msg || '保存失败', {icon:2});
+            }
+        });
+        return false;
+    });
+});
+</script>
+{% endraw %}
+{% endblock %}

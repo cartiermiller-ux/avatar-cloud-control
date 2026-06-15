@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header"><i class="layui-icon layui-icon-form" style="margin-right:5px;"></i>注册任务</div>
+    <div class="layui-card-body">
+        <table id="tasks-table" lay-filter="tasks-table"></table>
+    </div>
+</div>
+
+<script type="text/html" id="table-toolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-normal layui-btn-sm" lay-event="create"><i class="layui-icon layui-icon-add-1"></i> 创建任务</button>
+        <button class="layui-btn layui-btn-warm layui-btn-sm" lay-event="refresh"><i class="layui-icon layui-icon-refresh-1"></i> 刷新</button>
+    </div>
+</script>
+
+<script type="text/html" id="row-toolbar">
+    <button class="layui-btn layui-btn-xs" lay-event="view">查看</button>
+    <button class="layui-btn layui-btn-xs layui-btn-danger" lay-event="cancel">取消</button>
+</script>
+
+<!-- 弹窗模板 -->
+<script type="text/html" id="task-dialog-tpl">
+<div style="padding:20px;">
+    <form class="layui-form" lay-filter="task-form">
+        <div class="layui-form-item">
+            <label class="layui-form-label">任务名称 *</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" lay-verify="required" placeholder="输入任务名称" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">注册数量 *</label>
+            <div class="layui-input-block">
+                <input type="number" name="count" lay-verify="required|number" placeholder="要注册的账号数量" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">使用代理</label>
+            <div class="layui-input-block">
+                <input type="checkbox" name="use_proxy" lay-skin="switch" lay-text="是|否" value="1">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-input-block" style="margin-left:0 !important;text-align:center;">
+                <button class="layui-btn" lay-submit lay-filter="save-task">开始注册</button>
+                <button type="button" class="layui-btn layui-btn-primary" onclick="layer.closeAll()">取消</button>
+            </div>
+        </div>
+    </form>
+</div>
+</script>
+{% endblock %}
+
+{% block extra_js %}
+{% raw %}
+<script>
+layui.use(['table', 'form'], function(){
+    var table = layui.table;
+    var form = layui.form;
+    var layer = layui.layer;
+
+    var DIALOG_HTML = $('#task-dialog-tpl').html();
+
+    function openCreateDialog(){
+        layer.open({
+            type: 1,
+            title: '创建注册任务',
+            content: DIALOG_HTML,
+            area: ['500px', '350px'],
+            success: function(layero){
+                form.render(null, 'task-form');
+            }
+        });
+    }
+
+    var tableIns = table.render({
+        elem: '#tasks-table',
+        url: '/api/register/tasks',
+        page: true,
+        limit: 20,
+        toolbar: '#table-toolbar',
+        cols: [[
+            {field:'id', title:'ID', width:80, sort:true},
+            {field:'task_name', title:'任务名称'},
+            {field:'status', title:'状态', width:100, templet:function(d){
+                if(d.status==0) return '<span class="layui-badge">待开始</span>';
+                if(d.status==1) return '<span class="layui-badge layui-bg-blue">注册中</span>';
+                if(d.status==2) return '<span class="layui-badge layui-bg-green">完成</span>';
+                if(d.status==3) return '<span class="layui-badge layui-bg-red">失败</span>';
+                return '<span class="layui-badge">未知</span>';
+            }},
+            {field:'success_count', title:'成功数', width:100, templet:function(d){ return d.success_count||0; }},
+            {field:'failed_count', title:'失败数', width:100, templet:function(d){ return d.failed_count||0; }},
+            {field:'created_at', title:'创建时间', width:170, templet:function(d){ return formatTime(d.created_at); }},
+            {title:'操作', toolbar:'#row-toolbar', width:150, fixed:'right'}
+        ]],
+        response: {statusCode: 0}
+    });
+
+    table.on('toolbar(tasks-table)', function(obj){
+        if(obj.event==='create') openCreateDialog();
+        else if(obj.event==='refresh') tableIns.reload();
+    });
+
+    table.on('tool(tasks-table)', function(obj){
+        if(obj.event==='view') layer.msg('查看功能开发中...',{icon:0});
+        else if(obj.event==='cancel'){
+            if(obj.data.status != 0){ layer.msg('只能取消待开始的任务',{icon:2}); return; }
+            layer.confirm('确定取消？',function(i){
+                $.post('/api/register/cancel',{id:obj.data.id},function(res){
+                    if(res.code==0){layer.msg('已取消',{icon:1});tableIns.reload();}
+                    else layer.msg(res.msg||'失败',{icon:2});
+                });
+                layer.close(i);
+            });
+        }
+    });
+
+    form.on('submit(save-task)', function(data){
+        $.ajax({
+            url:'/api/register/create',
+            method:'POST',
+            data:data.field,
+            success:function(res){
+                if(res.code==0){layer.msg('任务已创建',{icon:1});layer.closeAll();tableIns.reload();}
+                else layer.msg(res.msg||'创建失败',{icon:2});
+            },
+            error:function(xhr){ layer.msg('请求失败：'+(xhr.responseText||'网络错误'),{icon:2}); }
+        });
+        return false;
+    });
+});
+</script>
+{% endraw %}
+{% endblock %}
