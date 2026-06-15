@@ -239,9 +239,9 @@ layui.use(['table', 'form', 'upload', 'layer'], function(){
     }
 
     function viewTask(id){
-        var idx = showLoading('加载中...');
+        var idx = layer.load(1);
         $.get('/api/matrix/tasks/' + id, function(res){
-            hideLoading(idx);
+            layer.close(idx);
             if(res.code == 0){
                 var t = res.data;
                 var html = '<div class="layui-row layui-col-space10">';
@@ -268,21 +268,25 @@ layui.use(['table', 'form', 'upload', 'layer'], function(){
 
     function startTask(id){
         layer.confirm('确定启动该任务？', function(index){
+            layer.close(index);
+            var idx = layer.load(1);
             $.post('/api/matrix/start', {id:id}, function(res){
+                layer.close(idx);
                 if(res.code == 0){ layer.msg('任务已启动', {icon:1}); tableIns.reload(); }
                 else layer.msg(res.msg || '启动失败', {icon:2});
             });
-            layer.close(index);
         });
     }
 
     function pauseTask(id){
         layer.confirm('确定暂停该任务？', function(index){
+            layer.close(index);
+            var idx = layer.load(1);
             $.post('/api/matrix/pause', {id:id}, function(res){
+                layer.close(idx);
                 if(res.code == 0){ layer.msg('任务已暂停', {icon:1}); tableIns.reload(); }
                 else layer.msg(res.msg || '暂停失败', {icon:2});
             });
-            layer.close(index);
         });
     }
 

@@ -465,7 +465,9 @@ layui.use(['table', 'form', 'upload'], function(){
             return;
         }
 
+        var listIdx = layer.load(1);
         $.get('/api/salesman/list_all', function(res){
+            layer.close(listIdx);
             var smOpts = '<option value="">请选择业务员</option>';
             if(res.code === 0 && res.data.length > 0){
                 res.data.forEach(function(s){
@@ -539,6 +541,8 @@ layui.use(['table', 'form', 'upload'], function(){
             return;
         }
         layer.confirm('确定回收这 <strong>'+selected.length+'</strong> 个账号？回收后将解除业务员绑定。', function(ci){
+            layer.close(ci);
+            var loadIdx = layer.load(1);
             var aids = selected.map(function(d){ return d.id; });
             $.ajax({
                 url:'/api/accounts/recover',
@@ -546,12 +550,13 @@ layui.use(['table', 'form', 'upload'], function(){
                 contentType:'application/json',
                 data:JSON.stringify({account_ids:aids}),
                 success:function(r){
+                    layer.close(loadIdx);
                     if(r.code===0){
                         layer.msg(r.msg, {icon:1}, function(){ tableIns.reload(); });
                     } else { layer.msg(r.msg||'回收失败', {icon:2}); }
-                }
+                },
+                error: function(){ layer.close(loadIdx); layer.msg('请求失败',{icon:2}); }
             });
-            layer.close(ci);
         });
     }
 

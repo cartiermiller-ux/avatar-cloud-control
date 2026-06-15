@@ -155,22 +155,26 @@ layui.use(['table', 'form'], function(){
     }
 
     function showAddDialog(){
-        layer.open({
-            type: 1,
-            title: '添加业务员',
-            content: SALESMAN_DIALOG_HTML,
-            area: ['600px', '450px'],
-            success: function(layero){
-                layero.find('#salesman-form')[0].reset();
-                layero.find('#salesman-id').val('');
-                loadAccounts(layero);
-                form.render(null, 'salesman-form');
-            }
+        var loadIdx = layer.load(1);
+        $.get('/api/accounts', function(){
+            layer.close(loadIdx);
+            layer.open({
+                type: 1,
+                title: '添加业务员',
+                content: SALESMAN_DIALOG_HTML,
+                area: ['600px', '450px'],
+                success: function(layero){
+                    layero.find('#salesman-form')[0].reset();
+                    layero.find('#salesman-id').val('');
+                    loadAccounts(layero);
+                    form.render(null, 'salesman-form');
+                }
+            });
         });
     }
 
     function editSalesman(id){
-        var idx = showLoading('加载中...');
+        var idx = layer.load(1);
         $.get('/api/salesmen/' + id, function(res){
             hideLoading(idx);
             if(res.code == 0){
@@ -204,9 +208,9 @@ layui.use(['table', 'form'], function(){
     }
 
     function viewPerformance(id){
-        var idx = showLoading('加载中...');
+        var idx = layer.load(1);
         $.get('/api/salesmen/' + id + '/performance', function(res){
-            hideLoading(idx);
+            layer.close(idx);
             if(res.code == 0){
                 var d = res.data;
                 var html = '<div class="layui-row layui-col-space10">';
