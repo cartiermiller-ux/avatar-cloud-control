@@ -1,13 +1,12 @@
-﻿"""
+"""
 TextNow Factory - 矩阵群发核心模块
 批量发送消息到多个联系人
 支持：分批、多线程、失败重试、进度跟踪、状态实时更新
-对齐表结构：matrix_tasks / matrix_send_records / accounts
+对齐表结构：matrix_tasks / matrix_send_records / tn_accounts
 """
 
 import sys
 from pathlib import Path
-
 # 确保项目根目录在 Python 路径中
 
 import time
@@ -29,21 +28,21 @@ def run_task(task_id):
 
     try:
         # 1. 查询任务基础信息
-        cur.execute("SELECT * FROM matrix_tasks WHERE id = %s", (task_id,))
+        cur.execute("SELECT * FROM matrix_tasks WHERE id = ?", (task_id,))
         task = cur.fetchone()
         if not task:
             log.error(f"任务 {task_id} 不存在")
             return
 
         # 2. 更新任务状态为执行中
-        cur.execute("UPDATE matrix_tasks SET status = 1 WHERE id = %s", (task_id,))
+        cur.execute("UPDATE matrix_tasks SET status = 1 WHERE id = ?", (task_id,))
         conn.commit()
 
         # 3. 查询发送账号
-        cur.execute("SELECT * FROM accounts WHERE salesman_id = %s AND status = 1", (task["salesman_id"],))
+        cur.execute("SELECT * FROM tn_accounts WHERE salesman_id = ? AND status = 1", (task["salesman_id"],))
         accounts = cur.fetchall()
         if not accounts:
-            cur.execute("UPDATE matrix_tasks SET status = 4, fail_count = 1 WHERE id = %s", (task_id,))
+            cur.execute("UPDATE matrix_tasks SET status = 4, fail_count = 1 WHERE id = ?", (task_id,))
             conn.commit()
             log.warning(f"任务 {task_id} 无可用账号")
             return
@@ -52,7 +51,7 @@ def run_task(task_id):
         target_numbers = task["target_list"].split("\n")
         target_numbers = [n.strip() for n in target_numbers if n.strip()]
         if not target_numbers:
-            cur.execute("UPDATE matrix_tasks SET status = 4 WHERE id = %s", (task_id,))
+            cur.execute("UPDATE matrix_tasks SET status = 4 WHERE id = ?", (task_id,))
             conn.commit()
             return
 
@@ -80,7 +79,7 @@ def run_task(task_id):
 
             # 实时更新进度
             cur.execute(
-                "UPDATE matrix_tasks SET send_count = %s, success_count = %s, fail_count = %s WHERE id = %s",
+                "UPDATE matrix_tasks SET send_count = ?, success_count = ?, fail_count = ? WHERE id = ?",
                 (success + fail, success, fail, task_id)
             )
             conn.commit()
@@ -89,13 +88,13 @@ def run_task(task_id):
             time.sleep(2)
 
         # 6. 任务完成
-        cur.execute("UPDATE matrix_tasks SET status = 2 WHERE id = %s", (task_id,))
+        cur.execute("UPDATE matrix_tasks SET status = 2 WHERE id = ?", (task_id,))
         conn.commit()
         log.info(f"任务 {task_id} 执行完成：成功 {success}，失败 {fail}")
 
     except Exception as e:
         conn.rollback()
-        cur.execute("UPDATE matrix_tasks SET status = 4 WHERE id = %s", (task_id,))
+        cur.execute("UPDATE matrix_tasks SET status = 4 WHERE id = ?", (task_id,))
         conn.commit()
         log.error(f"任务 {task_id} 执行异常：{str(e)}", exc_info=True)
     finally:
@@ -106,7 +105,7 @@ def send_one(task_id, account, target):
     """
     发送单条消息
     :param task_id: 任务 ID
-    :param account: 全字段账号信息 dict
+    :param account: 全字段账号信息 dict（来自 tn_accounts）
     :param target: 目标 {"number": "1234567890", "content": "消息内容"}
     :return: (success: bool, error: str)
     """
@@ -119,12 +118,12 @@ def send_one(task_id, account, target):
         try:
             # ====================== TODO: 接入 TextNow 真实协议发送 ======================
             # 需调用 core 层的协议方法，使用 account 中的全字段鉴权：
-            # px_authorization / cookie / user_agent / px_device_fp 等
+            # px_auth / cookie(sid) / user_agent / device_fp 等
             # 示例：response = textnow_api.send_message(account, number, content)
             # ==========================================================================
 
             # 模拟发送逻辑（上线前替换为真实协议调用）
-            log.info(f"[{account['phone']}] → {number}：{content[:20]}...")
+            log.info(f"[{account.get('phone_number', '')}] → {number}：{content[:20]}...")
             time.sleep(0.3)
 
             # 记录发送成功
@@ -133,7 +132,7 @@ def send_one(task_id, account, target):
             cur.execute(
                 """INSERT INTO matrix_send_records 
                    (task_id, account_id, target_phone, content, status) 
-                   VALUES (%s, %s, %s, %s, 1)""",
+                   VALUES (?, ?, ?, ?, 1)""",
                 (task_id, account["id"], number, content)
             )
             conn.commit()
@@ -152,7 +151,7 @@ def send_one(task_id, account, target):
     cur.execute(
         """INSERT INTO matrix_send_records 
            (task_id, account_id, target_phone, content, status, error_msg) 
-           VALUES (%s, %s, %s, %s, 0, %s)""",
+           VALUES (?, ?, ?, ?, 0, ?)""",
         (task_id, account["id"], number, content, last_error)
     )
     conn.commit()
@@ -182,7 +181,7 @@ def create_task(salesman_id, task_name, content, target_numbers):
         cur.execute(
             """INSERT INTO matrix_tasks 
                (salesman_id, task_name, target_list, content, send_count, success_count, fail_count, status) 
-               VALUES (%s, %s, %s, %s, 0, 0, 0, 0)""",
+               VALUES (?, ?, ?, ?, 0, 0, 0, 0)""",
             (salesman_id, task_name, target_numbers, content)
         )
         task_id = cur.lastrowid
@@ -207,7 +206,7 @@ def get_task_detail(task_id):
     """
     conn = get_db_dict()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM matrix_tasks WHERE id = %s", (task_id,))
+    cur.execute("SELECT * FROM matrix_tasks WHERE id = ?", (task_id,))
     task = cur.fetchone()
     conn.close()
     return task
@@ -224,17 +223,17 @@ def get_task_records(task_id, page=1, limit=20):
     conn = get_db_dict()
     cur = conn.cursor()
 
-    cur.execute("SELECT COUNT(*) as total FROM matrix_send_records WHERE task_id = %s", (task_id,))
+    cur.execute("SELECT COUNT(*) as total FROM matrix_send_records WHERE task_id = ?", (task_id,))
     total = cur.fetchone()["total"]
 
     offset = (page - 1) * limit
     cur.execute(
-        """SELECT r.*, a.phone as account_phone 
+        """SELECT r.*, a.phone_number as account_phone 
            FROM matrix_send_records r 
-           LEFT JOIN accounts a ON r.account_id = a.id
-           WHERE r.task_id = %s
+           LEFT JOIN tn_accounts a ON r.account_id = a.id
+           WHERE r.task_id = ?
            ORDER BY r.id DESC
-           LIMIT %s OFFSET %s""",
+           LIMIT ? OFFSET ?""",
         (task_id, limit, offset)
     )
     records = cur.fetchall()

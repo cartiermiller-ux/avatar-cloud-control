@@ -85,7 +85,7 @@ def fetch_messages(account_id, limit=50):
                     f"""INSERT INTO tn_conversations
                        (account_id, contact_number, last_message, unread, salesman_id)
                        VALUES ({PH}, {PH}, {PH}, 1, {PH})""",
-                    (account_id, contact_phone, content, account.get("salesman_id"))
+                    (account_id, contact_phone, content[:200], account.get("salesman_id"))
                 )
                 conv_id = cur.lastrowid
             else:

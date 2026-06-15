@@ -56,7 +56,7 @@ def import_from_csv(file_path):
                     cur.execute(
                         """INSERT IGNORE INTO tn_accounts 
                            (username, password, sid, token, phone_number, email, proxy, status) 
-                           VALUES (%s, %s, %s, %s, %s, %s, %s, 1)""",
+                           VALUES (?, ?, ?, ?, ?, ?, ?, 1)""",
                         (username, password, sid, token, phone, email, proxy)
                     )
                     
@@ -130,7 +130,7 @@ def import_from_txt(file_path):
                     cur.execute(
                         """INSERT IGNORE INTO tn_accounts 
                            (username, password, sid, token, status) 
-                           VALUES (%s, %s, %s, %s, 1)""",
+                           VALUES (?, ?, ?, ?, 1)""",
                         (username, password, sid, token)
                     )
                     
