@@ -1,0 +1,55 @@
+<form class="layui-form" id="editKeyForm" style="padding:20px;">
+    <input type="hidden" name="id" value="{{key.id}}">
+    <div class="layui-form-item">
+        <label class="layui-form-label">密钥名称</label>
+        <div class="layui-input-block">
+            <input type="text" name="name" lay-verify="required" value="{{key.name}}" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">密钥字符串</label>
+        <div class="layui-input-block">
+            <input type="text" value="{{key.key_str}}" readonly class="layui-input layui-disabled">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">访问范围</label>
+        <div class="layui-input-block">
+            <input type="text" name="access_scope" lay-verify="required" value="{{key.access_scope}}" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">绑定分组</label>
+        <div class="layui-input-block">
+            <select name="bind_group_ids" xm-select="groupSel" xm-select-skin="default" multiple>
+                {% set bindArr = key.bind_group_ids.split(',') if key.bind_group_ids else [] %}
+                {% for g in group_list %}
+                <option value="{{g.id}}" {% if g.id|string in bindArr %}selected{% endif %}>{{g.group_name}}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="layui-form-item layui-text-center">
+        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitEdit">保存修改</button>
+    </div>
+</form>
+<script src="https://cdn.jsdelivr.net/npm/layui-xm-select@0.2.1/dist/xm-select.js"></script>
+<script>
+layui.use(['form','layer','xmSelect'],function(){
+    var form = layui.form;
+    var xmSelect = layui.xmSelect;
+    xmSelect.render({el:'[xm-select="groupSel"]'});
+    form.on('submit(submitEdit)',function(data){
+        var load = layer.load(2);
+        $.post("/admin/key/edit",data.field,res=>{
+            layer.close(load);
+            if(res.code == 200){
+                layer.msg("修改成功",{time:1000},()=>layer.closeAll());
+            }else{
+                layer.msg(res.msg,{icon:2});
+            }
+        },"json");
+        return false;
+    });
+});
+</script>

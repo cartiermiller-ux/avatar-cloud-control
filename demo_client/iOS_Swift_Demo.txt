@@ -1,0 +1,110 @@
+import Foundation
+import Starscream
+
+class IPhoneDeviceClient {
+    private var socket: WebSocket!
+    let deviceSN: String = "IPHONE-2026-0001"
+    let localPhone: String = "+18881234567"
+    let serverUrl = URL(string: "http://127.0.0.1:5000")!
+    
+    init() {
+        var request = URLRequest(url: serverUrl)
+        request.timeoutInterval = 10
+        socket = WebSocket(request: request)
+        socket.delegate = self
+    }
+    
+    func connect() {
+        socket.connect()
+    }
+    
+    // 发送心跳包
+    private func sendHeartbeat() {
+        let data: [String: Any] = [
+            "msg_type": "device_heartbeat",
+            "device_sn": deviceSN,
+            "wifi_calling": 1
+        ]
+        sendJson(data: data)
+    }
+    
+    // 设备登录注册
+    private func sendLogin() {
+        let data: [String: Any] = [
+            "msg_type": "device_login",
+            "device_sn": deviceSN,
+            "wifi_calling": 1
+        ]
+        sendJson(data: data)
+    }
+    
+    // 通用JSON发送封装
+    private func sendJson(data: [String: Any]) {
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: data)
+            if let jsonStr = String(data: jsonData, encoding: .utf8) {
+                socket.write(string: jsonStr)
+            }
+        } catch {
+            print("JSON序列化失败")
+        }
+    }
+    
+    // 模拟收到验证码上报
+    func mockReceiveCode() {
+        let data: [String: Any] = [
+            "msg_type": "code_receive",
+            "device_sn": deviceSN,
+            "receive_phone": localPhone,
+            "verify_code": Int.random(in: 100000...999999),
+            "sender": "+19991112222"
+        ]
+        sendJson(data: data)
+    }
+    
+    // 模拟客户发来iMessage
+    func mockCustomerMessage() {
+        let data: [String: Any] = [
+            "msg_type": "im_incoming_msg",
+            "device_sn": deviceSN,
+            "target_phone": "+17776543210",
+            "local_phone": localPhone,
+            "content": "有套餐介绍吗",
+            "msg_type": "text"
+        ]
+        sendJson(data: data)
+    }
+}
+
+extension IPhoneDeviceClient: WebSocketDelegate {
+    func didConnect(with state: WebSocketConnectionState) {
+        if case .connected = state {
+            print("iOS设备WebSocket连接成功")
+            sendLogin()
+            // 定时心跳定时器
+            Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+                self.sendHeartbeat()
+            }
+        }
+    }
+    
+    func didReceive(event: WebSocketEvent, client: WebSocket) {
+        switch event {
+        case .text(let text):
+            print("收到服务端指令：\(text)")
+            // 解析后台下发的发送消息/断开指令
+        case .disconnected(let reason, let code):
+            print("连接断开：\(reason)")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                self.connect()
+            }
+        case .error(let err):
+            print("连接错误：\(err?.localizedDescription ?? "")")
+        default: break
+        }
+    }
+}
+
+// 使用示例
+// let client = IPhoneDeviceClient()
+// client.connect()

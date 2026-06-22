@@ -1,0 +1,87 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="layui-row layui-col-space10">
+    <!-- 左侧会话列表 -->
+    <div class="layui-col-md4">
+        <div class="layui-card">
+            <div class="layui-card-header">客户会话列表</div>
+            <div class="layui-card-body" style="height:700px;overflow-y:auto;" id="sessionListBox">
+            </div>
+        </div>
+    </div>
+    <!-- 右侧聊天窗口 -->
+    <div class="layui-col-md8">
+        <div class="layui-card">
+            <div class="layui-card-header" id="chatTitle">选择左侧会话查看聊天记录</div>
+            <div class="layui-card-body" style="height:600px;overflow-y:auto;" id="chatMsgBox">
+            </div>
+            <div class="layui-card-footer" style="padding:15px;">
+                <textarea id="sendText" class="layui-textarea" rows="3" placeholder="输入回复消息"></textarea>
+                <div class="layui-margin-top10 layui-text-right">
+                    <button class="layui-btn layui-btn-normal" id="sendMsgBtn">发送消息</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+layui.use(['layer'],function(){
+    var layer = layui.layer;
+    var currentSessionId = null;
+    // 加载会话列表
+    function loadSession(){
+        $.get("/admin/chat/getSessionList",res=>{
+            var html = "";
+            res.data.forEach(item=>{
+                html += `<div class="layui-card layui-card-small" style="margin-bottom:10px;cursor:pointer;" data-sid="${item.id}">
+                    <div class="layui-card-header">客户号码：${item.target_phone} ${item.unread_count>0?'<span class="layui-badge layui-bg-red">'+item.unread_count+'</span>':''}</div>
+                    <div class="layui-card-body">我方设备：${item.local_phone}<br>最后消息：${item.last_msg_time||"暂无消息"}</div>
+                </div>`;
+            });
+            $("#sessionListBox").html(html);
+            // 点击会话加载聊天
+            $("#sessionListBox .layui-card").click(function(){
+                currentSessionId = $(this).data("sid");
+                var phone = $(this).find(".layui-card-header").text();
+                $("#chatTitle").text("当前会话："+phone.replace("客户号码：","").replace(/\d+/,"").trim());
+                loadChatHistory(currentSessionId);
+            });
+        },"json");
+    }
+    // 加载聊天记录
+    function loadChatHistory(sid){
+        $.get("/admin/chat/getHistory?session_id="+sid,res=>{
+            var html = "";
+            res.data.forEach(msg=>{
+                if(msg.direction == "in"){
+                    html += `<div style="margin:8px 0;text-align:left;"><div style="background:#f2f3f5;padding:8px 12px;border-radius:6px;display:inline-block;max-width:70%;">${msg.content}</div></div>`;
+                }else{
+                    html += `<div style="margin:8px 0;text-align:right;"><div style="background:#1677ff;color:#fff;padding:8px 12px;border-radius:6px;display:inline-block;max-width:70%;">${msg.content}</div></div>`;
+                }
+            });
+            $("#chatMsgBox").html(html);
+            $("#chatMsgBox").scrollTop($("#chatMsgBox")[0].scrollHeight);
+        },"json");
+    }
+    // 发送消息
+    $("#sendMsgBtn").click(()=>{
+        if(!currentSessionId){
+            return layer.msg("请先选择会话");
+        }
+        var text = $("#sendText").val().trim();
+        if(!text) return layer.msg("请输入内容");
+        $.post("/admin/chat/sendMsg",{session_id:currentSessionId,content:text},res=>{
+            if(res.code == 200){
+                $("#sendText").val("");
+                loadChatHistory(currentSessionId);
+            }else{
+                layer.msg(res.msg,{icon:2});
+            }
+        },"json");
+    });
+    // 定时刷新会话
+    loadSession();
+    setInterval(loadSession,10000);
+});
+</script>
+{% endblock %}

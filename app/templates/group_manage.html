@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header">分组树形管理</div>
+    <div class="layui-card-body">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md12 layui-text-right">
+                <button class="layui-btn layui-btn-normal" id="addGroupBtn">新增一级分组</button>
+            </div>
+        </div>
+        <div id="groupTree"></div>
+    </div>
+</div>
+<div id="groupPopup"></div>
+<script>
+layui.use(['tree','layer','form'],function(){
+    var tree = layui.tree;
+    var layer = layui.layer;
+    function loadTree(){
+        $.get("/admin/group/getTree",res=>{
+            tree.render({
+                elem:'#groupTree',
+                data:res.data,
+                edit:{show:true,add:true,update:true,del:true},
+                operate:function(obj){
+                    var type = obj.type;
+                    var data = obj.data;
+                    if(type == 'add'){
+                        layer.prompt({title:"输入新分组名称"},name=>{
+                            $.post("/admin/group/add",{parent_id:data.id,group_name:name},res=>{
+                                layer.msg(res.msg);loadTree();
+                            },"json");
+                        });
+                    }else if(type == 'update'){
+                        layer.prompt({value:data.group_name,title:"修改分组名称"},name=>{
+                            $.post("/admin/group/edit",{id:data.id,group_name:name},res=>{
+                                layer.msg(res.msg);loadTree();
+                            },"json");
+                        });
+                    }else if(type == 'del'){
+                        layer.confirm("确定删除该分组？下属设备/账号将无归属",()=>{
+                            $.post("/admin/group/del",{id:data.id},res=>{
+                                layer.msg(res.msg);loadTree();
+                            },"json");
+                        });
+                    }
+                }
+            });
+        }
+    }
+    loadTree();
+    $("#addGroupBtn").click(()=>{
+        layer.prompt({title:"新增一级分组名称"},name=>{
+            $.post("/admin/group/add",{parent_id:0,group_name:name},res=>{
+                layer.msg(res.msg);loadTree();
+            },"json");
+        });
+    });
+});
+</script>
+{% endblock %}

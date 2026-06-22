@@ -1,0 +1,47 @@
+<form class="layui-form" id="createKeyForm" style="padding:20px;">
+    <div class="layui-form-item">
+        <label class="layui-form-label">密钥名称</label>
+        <div class="layui-input-block">
+            <input type="text" name="name" lay-verify="required" placeholder="如 客户A接码渠道" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">访问范围</label>
+        <div class="layui-input-block">
+            <input type="text" name="access_scope" lay-verify="required" placeholder="all/指定业务标识" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">绑定分组</label>
+        <div class="layui-input-block">
+            <select name="bind_group_ids" xm-select="groupSel" xm-select-skin="default" multiple>
+                {% for g in group_list %}
+                <option value="{{g.id}}">{{g.group_name}}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="layui-form-item layui-text-center">
+        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitCreate">生成密钥</button>
+    </div>
+</form>
+<script src="https://cdn.jsdelivr.net/npm/layui-xm-select@0.2.1/dist/xm-select.js"></script>
+<script>
+layui.use(['form','layer','xmSelect'],function(){
+    var form = layui.form;
+    var xmSelect = layui.xmSelect;
+    xmSelect.render({el:'[xm-select="groupSel"]'});
+    form.on('submit(submitCreate)',function(data){
+        var load = layer.load(2);
+        $.post("/admin/key/create",data.field,res=>{
+            layer.close(load);
+            if(res.code == 200){
+                layer.alert("密钥创建成功："+res.key,{title:"生成结果"},()=>layer.closeAll());
+            }else{
+                layer.msg(res.msg,{icon:2});
+            }
+        },"json");
+        return false;
+    });
+});
+</script>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阿凡达云控iMessage管理后台</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src@2.8.18/dist/css/layui.css">
+    <script src="https://cdn.jsdelivr.net/npm/layui-src@2.8.18/dist/layui.js"></script>
+    <style>
+        .layui-layout-admin .layui-header {background:#1f2937;}
+        .layui-logo {color:#fff;font-weight:bold;}
+        .layui-side {background:#111827;}
+        .layui-nav-tree .layui-nav-item a {color:#cbd5e1;}
+        .layui-nav-tree .layui-this a {background:#3b82f6 !important;color:#fff;}
+    </style>
+</head>
+<body class="layui-layout-admin">
+    <!-- 顶部导航 -->
+    <div class="layui-header">
+        <div class="layui-logo">阿凡达云控管理系统</div>
+        <ul class="layui-nav layui-layout-right">
+            <li class="layui-nav-item">
+                <a href="javascript:;">{{ session.username }}</a>
+                <dl class="layui-nav-child">
+                    <dd><a href="/admin/logout">退出登录</a></dd>
+                </dl>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 左侧侧边栏菜单 -->
+    <div class="layui-side layui-bg-black">
+        <div class="layui-side-scroll">
+            <ul class="layui-nav layui-nav-tree" lay-filter="sidebar">
+                <li class="layui-nav-item {% if page == 'device' %}layui-this{% endif %}">
+                    <a href="/admin/device">设备管理</a>
+                </li>
+                <li class="layui-nav-item {% if page == 'account' %}layui-this{% endif %}">
+                    <a href="/admin/account">账号管理</a>
+                </li>
+                <li class="layui-nav-item {% if page == 'group' %}layui-this{% endif %}">
+                    <a href="/admin/group">分组管理</a>
+                </li>
+                <li class="layui-nav-item {% if page == 'key1' or page == 'key2' %}layui-this{% endif %}">
+                    <a href="javascript:;">接码密钥管理</a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="/admin/key/list1">密钥列表</a></dd>
+                        <dd><a href="/admin/key/list2">取码日志</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item {% if page == 'push_task' %}layui-this{% endif %}">
+                    <a href="/admin/push/task">批量推送任务</a>
+                </li>
+                <li class="layui-nav-item {% if page == 'auto_reply' %}layui-this{% endif %}">
+                    <a href="/admin/reply">自动回复规则</a>
+                </li>
+                <li class="layui-nav-item {% if page == 'agent' %}layui-this{% endif %}">
+                    <a href="/admin/agent/list">客服聊天工作台</a>
+                </li>
+                <li class="layui-nav-item {% if page == 'stat' %}layui-this{% endif %}">
+                    <a href="/admin/stat">数据统计</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 主体内容区域 -->
+    <div class="layui-body" style="padding:15px;">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- 底部 -->
+    <div class="layui-footer" style="text-align:center;">
+        阿凡达云控iMessage群发接码系统 ©2026
+    </div>
+
+    <script>
+        layui.use(['element'], function(){
+            var element = layui.element;
+        });
+    </script>
+</body>
+</html>

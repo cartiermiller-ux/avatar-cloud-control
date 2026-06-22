@@ -1,0 +1,60 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: avatar_mysql
+    env_file: .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      TZ: Asia/Shanghai # 增加时区
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./avatar_cloud.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    restart: always
+    networks:
+      avatar_net:
+  redis:
+    image: redis:alpine
+    container_name: avatar_redis
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "6379:6379"
+    restart: always
+    networks:
+      avatar_net:
+  backend:
+    build: .
+    container_name: avatar_backend
+    command: python run.py
+    env_file: .env
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mysql
+      - redis
+    volumes:
+      - ./static/upload:/app/static/upload
+    restart: always
+    networks:
+      avatar_net:
+  celery_worker:
+    build: .
+    container_name: avatar_celery
+    command: python celery_worker.py
+    env_file: .env
+    environment:
+      TZ: Asia/Shanghai
+    depends_on:
+      - mysql
+      - redis
+    restart: always
+    networks:
+      avatar_net:
+networks:
+  avatar_net:

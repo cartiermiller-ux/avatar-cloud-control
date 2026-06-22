@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header">iPhone设备管理列表</div>
+    <div class="layui-card-body">
+        <div class="layui-form layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <input class="layui-input" id="searchKey" placeholder="设备名称/手机号搜索">
+            </div>
+            <div class="layui-col-md2">
+                <button class="layui-btn layui-btn-normal" id="searchBtn">搜索</button>
+                <button class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+            </div>
+            <div class="layui-col-md6 layui-text-right">
+                <button class="layui-btn layui-btn-blue" id="addDeviceBtn">新增设备</button>
+            </div>
+        </div>
+        <table class="layui-table" id="deviceTable" lay-filter="deviceTable"></table>
+    </div>
+</div>
+
+<!-- 弹窗容器 -->
+<div id="devicePopup"></div>
+
+<script>
+layui.use(['table','layer'],function(){
+    var table = layui.table;
+    var layer = layui.layer;
+    var deviceTable = table.render({
+        elem:'#deviceTable',
+        url:'/admin/device/getList',
+        page:true,
+        limit:20,
+        cols:[[
+            {field:'id',title:'ID',width:60},
+            {field:'device_sn',title:'设备SN'},
+            {field:'device_name',title:'设备名称'},
+            {field:'phone_number',title:'本机号码'},
+            {field:'group_name',title:'所属分组'},
+            {field:'online_status',title:'在线状态',templet:function(d){
+                return d.online_status==1?'<span class="layui-badge layui-bg-green">在线</span>':'<span class="layui-badge layui-bg-gray">离线</span>';
+            }},
+            {field:'wifi_calling',title:'WiFi Calling',templet:d=>d.wifi_calling?'开启':'关闭'},
+            {field:'last_heartbeat',title:'最后心跳'},
+            {title:'操作',toolbar:'#deviceToolBar',width:240}
+        ]]
+    });
+    // 工具栏
+    table.on('tool(deviceTable)',function(obj){
+        var data = obj.data;
+        if(obj.event == 'refresh'){
+            $.post("/admin/device/refreshStatus",{id:data.id},res=>{
+                layer.msg(res.msg);
+                deviceTable.reload();
+            },"json");
+        }else if(obj.event == 'edit'){
+            layer.open({type:2,title:"编辑设备",area:['700px','520px'],content:`/admin/device/editPopup?id=${data.id}`,end:()=>deviceTable.reload()});
+        }else if(obj.event == 'disconnect'){
+            layer.confirm("确认远程断开该设备？",()=>{
+                $.post("/admin/device/disconnect",{id:data.id},res=>{
+                    layer.msg(res.msg);
+                    deviceTable.reload();
+                },"json");
+            });
+        }
+    });
+    // 新增设备弹窗
+    $("#addDeviceBtn").click(()=>{
+        layer.open({type:2,title:"新增设备",area:['700px','520px'],content:"/admin/device/addPopup",end:()=>deviceTable.reload()});
+    });
+    // 搜索
+    $("#searchBtn").click(()=>{
+        deviceTable.reload({where:{key:$("#searchKey").val()}});
+    });
+    $("#resetBtn").click(()=>{
+        $("#searchKey").val("");
+        deviceTable.reload({where:{key:""}});
+    });
+});
+</script>
+<script type="text/html" id="deviceToolBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="refresh">刷新状态</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="disconnect">远程断开</a>
+</script>
+{% endblock %}

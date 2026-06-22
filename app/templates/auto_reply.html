@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header">自动回复规则管理</div>
+    <div class="layui-card-body">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md12 layui-text-right">
+                <button class="layui-btn layui-btn-blue" id="addReplyBtn">新增回复规则</button>
+            </div>
+        </div>
+        <table class="layui-table" id="replyTable" lay-filter="replyTable"></table>
+    </div>
+</div>
+<div id="replyPopup"></div>
+<script>
+layui.use(['table','layer'],function(){
+    var table = layui.table;
+    var layer = layui.layer;
+    var replyTable = table.render({
+        elem:'#replyTable',url:'/admin/reply/getList',page:true,limit:20,
+        cols:[[
+            {field:'id',title:'ID',width:60},
+            {field:'rule_name',title:'规则名称'},
+            {field:'match_keyword',title:'触发关键词'},
+            {field:'reply_text',title:'回复文本'},
+            {field:'bind_group_names',title:'生效分组'},
+            {field:'status',title:'状态',templet:d=>d.status==1?'启用':'关闭'},
+            {title:'操作',toolbar:'#replyTool',width:180}
+        ]]
+    });
+    table.on('tool(replyTable)',obj=>{
+        var d = obj.data;
+        if(obj.event == 'switch'){
+            var s = d.status == 1 ? 0 : 1;
+            $.post("/admin/reply/switch",{id:d.id,status:s},res=>{
+                layer.msg(res.msg);replyTable.reload();
+            },"json");
+        }else if(obj.event == 'edit'){
+            layer.open({type:2,title:"编辑自动回复",area:['720px','580px'],content:`/admin/reply/editPopup?id=${d.id}`,end:()=>replyTable.reload()});
+        }else if(obj.event == 'del'){
+            layer.confirm("删除后该规则永久失效",()=>{
+                $.post("/admin/reply/del",{id:d.id},res=>{
+                    layer.msg(res.msg);replyTable.reload();
+                },"json");
+            });
+        }
+    });
+    $("#addReplyBtn").click(()=>{
+        layer.open({type:2,title:"新增自动回复规则",area:['720px','580px'],content:"/admin/reply/addPopup",end:()=>replyTable.reload()});
+    });
+});
+</script>
+<script type="text/html" id="replyTool">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="switch">启停</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+{% endblock %}

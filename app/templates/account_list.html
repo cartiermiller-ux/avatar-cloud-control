@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header">iMessage/SMS账号管理</div>
+    <div class="layui-card-body">
+        <div class="layui-form layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <input class="layui-input" id="searchKey" placeholder="手机号搜索">
+            </div>
+            <div class="layui-col-md2">
+                <button class="layui-btn layui-btn-normal" id="searchBtn">搜索</button>
+                <button class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+            </div>
+            <div class="layui-col-md6 layui-text-right">
+                <button class="layui-btn layui-btn-blue" id="syncAllBtn">同步全部账号</button>
+            </div>
+        </div>
+        <table class="layui-table" id="accountTable" lay-filter="accountTable"></table>
+    </div>
+</div>
+<div id="accountPopup"></div>
+<script>
+layui.use(['table','layer'],function(){
+    var table = layui.table;
+    var layer = layui.layer;
+    var accTable = table.render({
+        elem:'#accountTable',
+        url:'/admin/account/getList',
+        page:true,limit:20,
+        cols:[[
+            {field:'id',title:'ID',width:60},
+            {field:'phone_number',title:'账号号码'},
+            {field:'account_type',title:'类型'},
+            {field:'device_name',title:'所属设备'},
+            {field:'group_name',title:'分组'},
+            {field:'register_status',title:'注册状态'},
+            {field:'maturity_level',title:'账号权重'},
+            {field:'reconnect_count',title:'重连次数'},
+            {title:'操作',toolbar:'#accTool',width:160}
+        ]]
+    });
+    table.on('tool(accountTable)',obj=>{
+        var d = obj.data;
+        if(obj.event == 'reconnect'){
+            $.post("/admin/account/reconnect",{id:d.id},res=>{
+                layer.msg(res.msg);accTable.reload();
+            },"json");
+        }else if(obj.event == 'edit'){
+            layer.open({type:2,title:"编辑账号",area:['680px','500px'],content:`/admin/account/edit?id=${d.id}`,end:()=>accTable.reload()});
+        }
+    });
+    $("#syncAllBtn").click(()=>{
+        var load = layer.load(2);
+        $.post("/admin/account/syncAll",{},res=>{
+            layer.close(load);
+            layer.msg(res.msg);
+            setTimeout(()=>accTable.reload(),1200);
+        },"json");
+    });
+    $("#searchBtn").click(()=>accTable.reload({where:{key:$("#searchKey").val()}}));
+    $("#resetBtn").click(()=>{$("#searchKey").val("");accTable.reload({where:{key:""}});});
+});
+</script>
+<script type="text/html" id="accTool">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="reconnect">重连</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="edit">编辑</a>
+</script>
+{% endblock %}

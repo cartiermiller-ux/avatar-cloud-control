@@ -1,0 +1,53 @@
+<form class="layui-form" id="addPushForm" style="padding:20px;">
+    <div class="layui-form-item">
+        <label class="layui-form-label">任务名称</label>
+        <div class="layui-input-block">
+            <input type="text" name="task_name" lay-verify="required" placeholder="6月客户推广消息" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">下发分组</label>
+        <div class="layui-input-block">
+            <select name="group_ids" xm-select="pushGroup" xm-select-skin="default" multiple>
+                {% for g in group_list %}
+                <option value="{{g.id}}">{{g.group_name}}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">推送文本</label>
+        <div class="layui-input-block">
+            <textarea name="msg_content" lay-verify="required" rows="6" placeholder="输入要发送的iMessage内容" class="layui-textarea"></textarea>
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">推送图片URL</label>
+        <div class="layui-input-block">
+            <input type="text" name="img_url" placeholder="可选，上传图片后填入地址" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item layui-text-center">
+        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitPush">创建任务并执行</button>
+    </div>
+</form>
+<script src="https://cdn.jsdelivr.net/npm/layui-xm-select@0.2.1/dist/xm-select.js"></script>
+<script>
+layui.use(['form','layer','xmSelect'],function(){
+    var form = layui.form;
+    var xmSelect = layui.xmSelect;
+    xmSelect.render({el:'[xm-select="pushGroup"]'});
+    form.on('submit(submitPush)',function(data){
+        var load = layer.load(2);
+        $.post("/admin/push/addTask",data.field,res=>{
+            layer.close(load);
+            if(res.code == 200){
+                layer.msg("任务已创建并进入队列",{time:1200},()=>layer.closeAll());
+            }else{
+                layer.msg(res.msg,{icon:2});
+            }
+        },"json");
+        return false;
+    });
+});
+</script>

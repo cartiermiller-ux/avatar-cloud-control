@@ -1,0 +1,60 @@
+<form class="layui-form" id="addReplyForm" style="padding:20px;">
+    <div class="layui-form-item">
+        <label class="layui-form-label">规则名称</label>
+        <div class="layui-input-block">
+            <input type="text" name="rule_name" lay-verify="required" placeholder="询价自动回复" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">触发关键词</label>
+        <div class="layui-input-block">
+            <input type="text" name="match_keyword" lay-verify="required" placeholder="多个关键词逗号分隔，如 价格,多少钱" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">回复文字</label>
+        <div class="layui-input-block">
+            <textarea name="reply_text" lay-verify="required" rows="4" placeholder="客户发送匹配关键词后自动回复内容" class="layui-textarea"></textarea>
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">回复图片地址</label>
+        <div class="layui-input-block">
+            <input type="text" name="reply_img" placeholder="可选，上传图片后填入URL" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">生效分组</label>
+        <div class="layui-input-block">
+            <select name="bind_group_ids" xm-select="replyGroup" xm-select-skin="default" multiple>
+                {% for g in group_list %}
+                <option value="{{g.id}}">{{g.group_name}}</option>
+                {% endfor %}
+            </select>
+            <div class="layui-form-mid layui-word-aux">不选择则全部分组生效</div>
+        </div>
+    </div>
+    <div class="layui-form-item layui-text-center">
+        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitAddReply">保存规则</button>
+    </div>
+</form>
+<script src="https://cdn.jsdelivr.net/npm/layui-xm-select@0.2.1/dist/xm-select.js"></script>
+<script>
+layui.use(['form','layer','xmSelect'],function(){
+    var form = layui.form;
+    var xmSelect = layui.xmSelect;
+    xmSelect.render({el:'[xm-select="replyGroup"]'});
+    form.on('submit(submitAddReply)',function(data){
+        var load = layer.load(2);
+        $.post("/admin/reply/add",data.field,res=>{
+            layer.close(load);
+            if(res.code == 200){
+                layer.msg("规则新增成功",{time:1000},()=>layer.closeAll());
+            }else{
+                layer.msg(res.msg,{icon:2});
+            }
+        },"json");
+        return false;
+    });
+});
+</script>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>系统登录</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui-src@2.8.18/dist/css/layui.css">
+    <script src="https://cdn.jsdelivr.net/npm/layui-src@2.8.18/dist/layui.js"></script>
+    <style>
+        body {background:#f2f3f5;}
+        .login-box {width:400px;margin:120px auto;background:#fff;padding:30px;border-radius:6px;}
+        .login-title {text-align:center;font-size:22px;margin-bottom:25px;font-weight:bold;}
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <div class="login-title">阿凡达云控后台登录</div>
+        <form class="layui-form" id="loginForm">
+            <div class="layui-form-item">
+                <label class="layui-form-label">账号</label>
+                <div class="layui-input-block">
+                    <input type="text" name="username" required lay-verify="required" placeholder="输入登录账号" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">密码</label>
+                <div class="layui-input-block">
+                    <input type="password" name="password" required lay-verify="required" placeholder="输入密码" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-input-block">
+                    <button class="layui-btn layui-btn-fluid layui-btn-normal" lay-submit lay-filter="loginSubmit">登录系统</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        layui.use(['form','layer'], function(){
+            var form = layui.form;
+            var layer = layui.layer;
+            form.on('submit(loginSubmit)', function(data){
+                var load = layer.load(2);
+                $.post("/admin/login", data.field, function(res){
+                    layer.close(load);
+                    if(res.code == 200){
+                        layer.msg("登录成功",{time:1000},function(){
+                            location.href="/admin/device";
+                        });
+                    }else{
+                        layer.msg(res.msg,{icon:2});
+                    }
+                },"json");
+                return false;
+            });
+        });
+    </script>
+</body>
+</html>

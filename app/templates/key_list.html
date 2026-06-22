@@ -1,0 +1,98 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-body">
+        <div class="layui-tab layui-tab-brief" lay-filter="keyTab">
+            <ul class="layui-tab-title">
+                <li class="layui-this">密钥列表</li>
+                <li>取码请求日志</li>
+            </ul>
+            <div class="layui-tab-content">
+                <!-- Tab1 密钥管理 -->
+                <div class="layui-tab-item layui-show">
+                    <div class="layui-form layui-row layui-col-space10">
+                        <div class="layui-col-md4">
+                            <input class="layui-input" id="keySearch" placeholder="密钥名称搜索">
+                        </div>
+                        <div class="layui-col-md2">
+                            <button class="layui-btn layui-btn-normal" id="keySearchBtn">搜索</button>
+                        </div>
+                        <div class="layui-col-md6 layui-text-right">
+                            <button class="layui-btn layui-btn-blue" id="createKeyBtn">新建密钥</button>
+                        </div>
+                    </div>
+                    <table class="layui-table" id="keyTable" lay-filter="keyTable"></table>
+                </div>
+                <!-- Tab2 请求日志 -->
+                <div class="layui-tab-item">
+                    <table class="layui-table" id="logTable" lay-filter="logTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="keyPopup"></div>
+<script>
+layui.use(['table','layer','element'],function(){
+    var table = layui.table;
+    var layer = layui.layer;
+    var element = layui.element;
+    // 密钥表格
+    var keyTable = table.render({
+        elem:'#keyTable',url:'/admin/key/getList',page:true,limit:20,
+        cols:[[
+            {field:'id',title:'ID',width:60},
+            {field:'name',title:'密钥名称'},
+            {field:'key_str',title:'密钥字符串'},
+            {field:'access_scope',title:'权限范围'},
+            {field:'status',title:'状态',templet:d=>d.status==1?'启用':'停用'},
+            {field:'last_use_time',title:'最后调用时间'},
+            {field:'create_time',title:'创建时间'},
+            {title:'操作',toolbar:'#keyTool',width:220}
+        ]]
+    });
+    // 日志表格
+    var logTable = table.render({
+        elem:'#logTable',url:'/admin/key/getRequestLog',page:true,limit:20,
+        cols:[[
+            {field:'id',title:'ID',width:60},
+            {field:'key_name',title:'所属密钥'},
+            {field:'request_api',title:'请求接口'},
+            {field:'phone_number',title:'操作号码'},
+            {field:'request_ip',title:'客户端IP'},
+            {field:'response_code',title:'返回码'},
+            {field:'create_time',title:'请求时间'}
+        ]]
+    });
+    table.on('tool(keyTable)',obj=>{
+        var d = obj.data;
+        if(obj.event == 'edit'){
+            layer.open({type:2,title:"编辑密钥",area:['720px','520px'],content:`/admin/key/editPopup?id=${d.id}`,end:()=>keyTable.reload()});
+        }else if(obj.event == 'switch'){
+            var newSt = d.status == 1 ? 0 : 1;
+            $.post("/admin/key/updateStatus",{id:d.id,status:newSt},res=>{
+                layer.msg(res.msg);keyTable.reload();
+            },"json");
+        }else if(obj.event == 'del'){
+            layer.confirm("确认删除该密钥，所有调用将失效",()=>{
+                $.post("/admin/key/del",{id:d.id},res=>{
+                    layer.msg(res.msg);keyTable.reload();
+                },"json");
+            });
+        }
+    });
+    $("#createKeyBtn").click(()=>{
+        layer.open({type:2,title:"新建接码密钥",area:['720px','520px'],content:"/admin/key/createPopup",end:()=>keyTable.reload()});
+    });
+    $("#keySearchBtn").click(()=>keyTable.reload({where:{name:$("#keySearch").val()}}));
+    element.on('tab(keyTab)',data=>{
+        if(data.index == 1) logTable.reload();
+    });
+});
+</script>
+<script type="text/html" id="keyTool">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="switch">启停</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+{% endblock %}

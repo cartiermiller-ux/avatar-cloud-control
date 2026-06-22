@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header">批量iMessage推送任务</div>
+    <div class="layui-card-body">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md12 layui-text-right">
+                <button class="layui-btn layui-btn-blue" id="addTaskBtn">新建推送任务</button>
+            </div>
+        </div>
+        <table class="layui-table" id="pushTable" lay-filter="pushTable"></table>
+    </div>
+</div>
+<div id="pushPopup"></div>
+<script>
+layui.use(['table','layer'],function(){
+    var table = layui.table;
+    var layer = layui.layer;
+    var pushTable = table.render({
+        elem:'#pushTable',url:'/admin/push/getTaskList',page:true,limit:20,
+        cols:[[
+            {field:'id',title:'ID',width:60},
+            {field:'task_name',title:'任务名称'},
+            {field:'group_names',title:'下发分组'},
+            {field:'total_count',title:'总号码数'},
+            {field:'send_count',title:'已发送'},
+            {field:'success_count',title:'成功'},
+            {field:'fail_count',title:'失败'},
+            {field:'reply_count',title:'收到回复'},
+            {field:'progress',title:'进度(%)'},
+            {field:'status',title:'任务状态'},
+            {field:'create_time',title:'创建时间'},
+            {title:'操作',toolbar:'#pushTool',width:180}
+        ]]
+    });
+    table.on('tool(pushTable)',obj=>{
+        var d = obj.data;
+        if(obj.event == 'stop'){
+            layer.confirm("确认终止当前运行任务？",()=>{
+                $.post("/admin/push/stopTask",{id:d.id},res=>{
+                    layer.msg(res.msg);pushTable.reload();
+                },"json");
+            });
+        }else if(obj.event == 'detail'){
+            layer.open({type:2,title:"任务详情",area:['900px','600px'],content:`/admin/push/taskDetail?id=${d.id}`});
+        }
+    });
+    $("#addTaskBtn").click(()=>{
+        layer.open({type:2,title:"新建推送任务",area:['750px','620px'],content:"/admin/push/addTaskPopup",end:()=>pushTable.reload()});
+    });
+});
+</script>
+<script type="text/html" id="pushTool">
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="stop">终止任务</a>
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail">详情</a>
+</script>
+{% endblock %}

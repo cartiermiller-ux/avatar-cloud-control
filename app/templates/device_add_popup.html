@@ -1,0 +1,57 @@
+<form class="layui-form" id="addDeviceForm" style="padding:20px;">
+    <div class="layui-form-item">
+        <label class="layui-form-label">设备SN</label>
+        <div class="layui-input-block">
+            <input type="text" name="device_sn" lay-verify="required" placeholder="iPhone设备唯一序列号" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">设备名称</label>
+        <div class="layui-input-block">
+            <input type="text" name="device_name" lay-verify="required" placeholder="如 iPhone 15 Pro 01" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">本机号码</label>
+        <div class="layui-input-block">
+            <input type="text" name="phone_number" lay-verify="required" placeholder="+1xxxxxx" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">归属分组</label>
+        <div class="layui-input-block">
+            <select name="group_id" lay-verify="required">
+                {% for g in group_list %}
+                <option value="{{g.id}}">{{g.group_name}}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">WiFi Calling</label>
+        <div class="layui-input-block">
+            <input type="radio" name="wifi_calling" value="1" title="开启" checked>
+            <input type="radio" name="wifi_calling" value="0" title="关闭">
+        </div>
+    </div>
+    <div class="layui-form-item layui-text-center">
+        <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitAdd">保存新增</button>
+    </div>
+</form>
+<script>
+layui.use(['form','layer'],function(){
+    var form = layui.form;
+    form.on('submit(submitAdd)',function(data){
+        var load = layer.load(2);
+        $.post("/admin/device/add",data.field,function(res){
+            layer.close(load);
+            if(res.code==200){
+                layer.msg("新增成功",{time:1000},()=>layer.closeAll());
+            }else{
+                layer.msg(res.msg,{icon:2});
+            }
+        },"json");
+        return false;
+    });
+});
+</script>

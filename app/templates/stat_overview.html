@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="layui-card">
+    <div class="layui-card-header">数据总览统计</div>
+    <div class="layui-card-body">
+        <div class="layui-form layui-row layui-col-space10">
+            <div class="layui-col-md3">
+                <input type="date" class="layui-input" id="statDate">
+            </div>
+            <div class="layui-col-md3">
+                <select class="layui-input" id="statGroup">
+                    <option value="0">全部分组汇总</option>
+                    {% for g in group_list %}
+                    <option value="{{g.id}}">{{g.group_name}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="layui-col-md2">
+                <button class="layui-btn layui-btn-normal" id="queryStatBtn">查询统计</button>
+                <button class="layui-btn layui-btn-primary" id="exportExcelBtn">导出Excel报表</button>
+            </div>
+        </div>
+        <!-- 统计卡片 -->
+        <div class="layui-row layui-col-space15 layui-margin-top20" id="statCardBox">
+            <div class="layui-col-md3"><div class="layui-card layui-card-body layui-text-center"><h3 id="onlineDev">0</h3><p>在线设备</p></div></div>
+            <div class="layui-col-md3"><div class="layui-card layui-card-body layui-text-center"><h3 id="totalSend">0</h3><p>当日发送总量</p></div></div>
+            <div class="layui-col-md3"><div class="layui-card layui-card-body layui-text-center"><h3 id="successSend">0</h3><p>发送成功</p></div></div>
+            <div class="layui-col-md3"><div class="layui-card layui-card-body layui-text-center"><h3 id="failSend">0</h3><p>发送失败</p></div></div>
+            <div class="layui-col-md3"><div class="layui-card layui-card-body layui-text-center"><h3 id="totalReply">0</h3><p>收到回复</p></div></div>
+            <div class="layui-col-md3"><div class="layui-card layui-card-body layui-text-center"><h3 id="totalCode">0</h3><p>接码次数</p></div></div>
+            <div class="layui-col-md3"><div class="layui-card layui-card-body layui-text-center"><h3 id="wifiOnline">0</h3><p>WiFi-Calling在线设备</p></div></div>
+        </div>
+        <!-- 分组明细表格 -->
+        <div class="layui-margin-top20">
+            <h4>各分组明细</h4>
+            <table class="layui-table" id="statGroupTable" lay-filter="statGroupTable"></table>
+        </div>
+    </div>
+</div>
+<script>
+layui.use(['table','layer'],function(){
+    var table = layui.table;
+    var layer = layui.layer;
+    var groupTable = table.render({
+        elem:'#statGroupTable',page:true,limit:15,
+        cols:[[
+            {field:'group_name',title:'分组名称'},
+            {field:'device_online_num',title:'在线设备'},
+            {field:'total_send',title:'发送总量'},
+            {field:'total_success',title:'成功'},
+            {field:'total_fail',title:'失败'},
+            {field:'total_reply',title:'回复'},
+            {field:'total_get_code',title:'接码次数'},
+            {field:'wifi_calling_online',title:'WiFi设备数'}
+        ]]
+    });
+    // 查询统计
+    $("#queryStatBtn").click(()=>{
+        var date = $("#statDate").val();
+        var gid = $("#statGroup").val();
+        if(!date) return layer.msg("请选择统计日期");
+        $.get("/admin/stat/getData",{stat_date:date,group_id:gid},res=>{
+            var d = res.data;
+            $("#onlineDev").text(d.device_online_num);
+            $("#totalSend").text(d.total_send);
+            $("#successSend").text(d.total_success);
+            $("#failSend").text(d.total_fail);
+            $("#totalReply").text(d.total_reply);
+            $("#totalCode").text(d.total_get_code);
+            $("#wifiOnline").text(d.wifi_calling_online);
+            groupTable.reload({where:{stat_date:date}});
+        },"json");
+    });
+    // 导出Excel
+    $("#exportExcelBtn").click(()=>{
+        var date = $("#statDate").val();
+        if(!date) return layer.msg("请选择统计日期再导出");
+        window.open("/admin/stat/exportExcel?stat_date="+date);
+    });
+    // 默认填充今日日期
+    var now = new Date();
+    $("#statDate").val(now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,'0')+"-"+String(now.getDate()).padStart(2,'0'));
+});
+</script>
+{% endblock %}
